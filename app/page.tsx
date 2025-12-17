@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
 import { useGLTF, useAnimations, Html, OrthographicCamera, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -177,12 +177,15 @@ export default function Home() {
           shadow-mapSize={[1024, 1024]} 
         />
 
-        {/* 環境とキャラクター */}
-        <SceneEnvironment />
-        
-        {/* 木のそばに配置 (位置は適宜調整してください) */}
-        <Mint position={[-1.5, 0, 1]} />
-        <Kariage position={[1.5, 0, -1]} />
+        {/* Suspenseで囲むことで、読み込み完了まで待機させる */}
+        <Suspense fallback={null}>
+          {/* 環境とキャラクター */}
+          <SceneEnvironment />
+          
+          {/* 木のそばに配置 (位置は適宜調整してください) */}
+          <Mint position={[-1.5, 0, 1]} />
+          <Kariage position={[1.5, 0, -1]} />
+        </Suspense>
 
       </Canvas>
     </div>
