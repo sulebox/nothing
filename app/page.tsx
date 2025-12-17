@@ -127,15 +127,16 @@ function Red({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 5. Hat
+// 5. Yellow (旧 Hat)
 // ---------------------------------------------------------
-function Hat({ position }: { position: [number, number, number] }) {
+function Yellow({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF('/models/hat.glb');
+  // ファイル名を yellow.glb に変更
+  const { scene, animations } = useGLTF('/models/yellow.glb');
   const { actions, names } = useAnimations(animations, group);
 
   useEffect(() => {
-    console.log('🤠 Hatのアニメーション一覧:', names);
+    console.log('🟡 Yellowのアニメーション一覧:', names);
   }, [names]);
 
   useEffect(() => {
@@ -148,37 +149,33 @@ function Hat({ position }: { position: [number, number, number] }) {
 
     let timeoutId: NodeJS.Timeout;
 
-    const playSequence = async () => {
-      const anim1 = actions['idle01'];
-      const anim2 = actions['idle02'];
+    // シンプルなループ再生関数
+    const playLoop = () => {
+      const anim = actions['idle01'];
 
-      if (!anim1 || !anim2) {
+      // 安全策
+      if (!anim) {
         if (names.length > 0) {
           actions[names[0]]?.reset().fadeIn(0.5).play();
         }
         return;
       }
 
-      anim2.fadeOut(0.5);
-      anim1.reset().fadeIn(0.5).play();
+      // アニメーション再生
+      anim.reset().fadeIn(0.5).play();
 
+      // 14秒後にループ
       timeoutId = setTimeout(() => {
-        anim1.fadeOut(0.5);
-        anim2.reset().fadeIn(0.5).play();
-
-        timeoutId = setTimeout(() => {
-          playSequence();
-        }, 13900); 
-
-      }, 8800); 
+        anim.fadeOut(0.5); // 一旦フェードアウト
+        playLoop();        // 再帰呼び出しでループ
+      }, 14000); // 14秒 (14000ms)
     };
 
-    playSequence();
+    playLoop();
 
     return () => {
       clearTimeout(timeoutId);
       actions['idle01']?.fadeOut(0.5);
-      actions['idle02']?.fadeOut(0.5);
     };
   }, [actions, scene, names]);
 
@@ -192,7 +189,7 @@ export default function Home() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
       <Canvas shadows>
-        {/* ★ここを変更しました： zoom={90} */}
+        {/* ★ここを変更： zoom={80} */}
         <OrthographicCamera 
           makeDefault 
           position={[20, 20, 20]} 
@@ -221,7 +218,8 @@ export default function Home() {
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
-          <Hat position={[1.5, 0, 0.5]} />
+          {/* Hat を Yellow に変更 */}
+          <Yellow position={[1.5, 0, 0.5]} />
         </Suspense>
 
       </Canvas>
