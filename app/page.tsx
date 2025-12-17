@@ -201,10 +201,10 @@ export default function Home() {
         <OrthographicCamera 
           makeDefault 
           position={[20, 20, 20]} 
-          zoom={120} 
+          zoom={80{ 
           near={0.1} 
           far={200}
-          onUpdate={c => c.lookAt(0, 2.5, 0)}
+          onUpdate={c => c.lookAt(0, 1.5, 0)}
         />
         
         <ambientLight intensity={0.6} />
