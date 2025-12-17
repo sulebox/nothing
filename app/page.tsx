@@ -33,7 +33,7 @@ function SceneEnvironment() {
       <primitive 
         object={treeScene} 
         position={[0, 0, 0]} 
-        scale={2{0} // サイズを1.0に
+        scale={2.0} // サイズを2.0に
       />
       
       {/* 接地感を出すための補助的な影 */}
