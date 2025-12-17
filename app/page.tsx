@@ -2,22 +2,20 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, useAnimations, Html, OrthographicCamera, ContactShadows, OrbitControls } from '@react-three/drei';
+import { useGLTF, useAnimations, Html, OrthographicCamera, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
 // ---------------------------------------------------------
-// 1. 背景（シンプルな黄緑色の草原）
+// 1. 背景（薄い抹茶色の草原）
 // ---------------------------------------------------------
 function SceneEnvironment() {
-  // ★ tree.glb の読み込みを削除しました
-  
   return (
     <group>
-      {/* 地面: シンプルな黄緑色の板 */}
+      {/* 地面: 色を薄い抹茶色に変更 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[100, 100]} />
-        {/* 黄緑色 (YellowGreen: #9ACD32) に設定 */}
-        <meshStandardMaterial color="#9ACD32" />
+        {/* ご希望の画像に近い、少しグレーがかった落ち着いた黄緑色 */}
+        <meshStandardMaterial color="#a3b08d" />
       </mesh>
       
       {/* 影 */}
@@ -38,8 +36,6 @@ function Mint({ position }: { position: [number, number, number] }) {
     let timeoutId: NodeJS.Timeout;
 
     const playSequence = async () => {
-      // 判明した名前: 'sleepidle', 'sleeping'
-      
       const randomWait = Math.random() * 5000 + 5000; 
       
       actions['sleepidle']?.reset().fadeIn(0.5).play();
@@ -60,7 +56,8 @@ function Mint({ position }: { position: [number, number, number] }) {
     return () => clearTimeout(timeoutId);
   }, [actions]);
 
-  return <primitive ref={group} object={scene} position={position} scale={1.5} />;
+  // スケールを少し大きく調整
+  return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
 // ---------------------------------------------------------
@@ -76,8 +73,6 @@ function Kariage({ position }: { position: [number, number, number] }) {
     let timeoutId: NodeJS.Timeout;
 
     const playSequence = async () => {
-      // 判明した名前: 'idle', 'sitting', 'sittingdown', 'sittingup'
-
       const randomWait = Math.random() * 10000 + 5000;
       
       actions['sittingdown']?.fadeOut(0.5);
@@ -114,33 +109,37 @@ function Kariage({ position }: { position: [number, number, number] }) {
 
   return (
     <group ref={group} position={position}>
-      <primitive object={scene} scale={1.5} />
+      {/* スケールを少し大きく調整 */}
+      <primitive object={scene} scale={1.8} />
       
-      {/* 吹き出し */}
+      {/* 吹き出し: デザインを変更 */}
       {showBubble && (
-        <Html position={[0, 2.5, 0]} center>
+        <Html position={[0, 3, 0]} center>
           <div style={{
             background: 'white',
-            padding: '8px 12px',
-            borderRadius: '12px',
-            border: '2px solid #333',
+            padding: '10px 16px', // 少し大きめに
+            borderRadius: '20px', // 丸みを強く
+            // border: '2px solid #333', // ←枠線を削除
+            color: 'black', // 文字色を黒に
             whiteSpace: 'nowrap',
-            fontSize: '14px',
+            fontSize: '16px', // フォントサイズを少し大きく
             fontFamily: 'sans-serif',
-            boxShadow: '2px 2px 0px rgba(0,0,0,0.2)',
+            fontWeight: 'bold',
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)', // 影を薄く
             position: 'relative'
           }}>
             てぶらでインド行く
+            {/* 吹き出しのしっぽ */}
             <div style={{
               position: 'absolute',
-              bottom: '-6px',
+              bottom: '-8px',
               left: '50%',
               transform: 'translateX(-50%)',
               width: 0,
               height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderTop: '6px solid white'
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderTop: '8px solid white' // 枠線なしの白い三角
             }} />
           </div>
         </Html>
@@ -154,13 +153,13 @@ function Kariage({ position }: { position: [number, number, number] }) {
 // ---------------------------------------------------------
 export default function Home() {
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#f0f0d0' }}>
+    // 背景色も原っぱの色に合わせて調整
+    <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
       <Canvas shadows>
-        {/* カメラ設定 */}
-        <OrthographicCamera makeDefault position={[20, 20, 20]} zoom={30} near={0.1} far={200} />
+        {/* 1) カメラ固定＆ズームイン: zoomの数字を小さくして寄せる (30 -> 15) */}
+        <OrthographicCamera makeDefault position={[20, 20, 20]} zoom={15} near={0.1} far={200} />
         
-        {/* グリグリ動かせるようにOrbitControlsを入れています */}
-        <OrbitControls />
+        {/* OrbitControls を削除してカメラを固定 */}
 
         <ambientLight intensity={0.7} />
         <directionalLight 
@@ -170,12 +169,11 @@ export default function Home() {
           shadow-mapSize={[1024, 1024]} 
         />
 
-        {/* 読み込み待機 */}
         <Suspense fallback={null}>
           <SceneEnvironment />
-          {/* キャラクターのみ配置 */}
-          <Mint position={[-2, 0, 1]} />
-          <Kariage position={[2, 0, -1]} />
+          {/* キャラクターの間隔を少し広げる */}
+          <Mint position={[-2.5, 0, 1.5]} />
+          <Kariage position={[2.5, 0, -1.5]} />
         </Suspense>
 
       </Canvas>
