@@ -127,14 +127,13 @@ function Red({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 5. Hat (安全機能付き)
+// 5. Hat
 // ---------------------------------------------------------
 function Hat({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/hat.glb');
   const { actions, names } = useAnimations(animations, group);
 
-  // ★コンソールにアニメ名を表示
   useEffect(() => {
     console.log('🤠 Hatのアニメーション一覧:', names);
   }, [names]);
@@ -150,21 +149,18 @@ function Hat({ position }: { position: [number, number, number] }) {
     let timeoutId: NodeJS.Timeout;
 
     const playSequence = async () => {
-      // 安全にアクションを取得
       const anim1 = actions['idle01'];
       const anim2 = actions['idle02'];
 
-      // もしアニメが見つからなければ警告を出して止める（クラッシュさせない）
+      // 安全策: アニメが見つからない場合は最初のアニメを再生
       if (!anim1 || !anim2) {
-        console.warn('⚠️ Hat: アニメーションが見つかりません。コンソールの一覧を確認してください。');
-        // とりあえず最初のアニメを再生しておく
         if (names.length > 0) {
           actions[names[0]]?.reset().fadeIn(0.5).play();
         }
         return;
       }
 
-      // 正常な場合のループ処理
+      // ループ再生
       anim2.fadeOut(0.5);
       anim1.reset().fadeIn(0.5).play();
 
@@ -198,13 +194,17 @@ export default function Home() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
       <Canvas shadows>
+        {/* ★ここがポイント！ 
+            zoom: 60 -> 120 (大きく拡大)
+            lookAt: (0, 0, 0) -> (0, 2.5, 0) (視点を上にずらして木全体を入れる)
+        */}
         <OrthographicCamera 
           makeDefault 
           position={[20, 20, 20]} 
-          zoom={60} 
+          zoom={120} 
           near={0.1} 
           far={200}
-          onUpdate={c => c.lookAt(0, 0, 0)}
+          onUpdate={c => c.lookAt(0, 2.5, 0)}
         />
         
         <ambientLight intensity={0.6} />
