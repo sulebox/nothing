@@ -11,6 +11,7 @@ import * as THREE from 'three';
 function SceneEnvironment() {
   const { scene: treeScene } = useGLTF('/models/tree.glb');
 
+  // 木はリアルでいいので、影を受けたり落としたりする
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
@@ -20,25 +21,27 @@ function SceneEnvironment() {
 
   return (
     <group>
+      {/* 地面: ここに影が落ちる */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#a3b08d" roughness={0.8} metalness={0.1} />
       </mesh>
       
-      {/* 木のサイズを 2.0 に変更 */}
+      {/* 木 (サイズ 2.0) */}
       <primitive 
         object={treeScene} 
         position={[0, 0, 0]} 
         scale={2.0} 
       />
       
+      {/* 接地感を出すための補助的な影 */}
       <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
   );
 }
 
 // ---------------------------------------------------------
-// 2. Mint (ペンギン) - アニメーション時間変更
+// 2. Mint (ペンギン)
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -48,8 +51,9 @@ function Mint({ position }: { position: [number, number, number] }) {
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
+        // ★修正ポイント: 影を落とすけど(cast)、自分は受けない(receive: false)
         child.castShadow = true;
-        child.receiveShadow = true;
+        child.receiveShadow = false; 
       }
     });
 
@@ -67,8 +71,7 @@ function Mint({ position }: { position: [number, number, number] }) {
 
         timeoutId = setTimeout(() => {
           playSequence();
-        // 「sleeping」の時間を 17.7秒 (17700ms) に変更
-        }, 17700);
+        }, 17700); // 17.7秒
 
       }, randomWait);
     };
@@ -91,8 +94,9 @@ function Kariage({ position }: { position: [number, number, number] }) {
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
+        // ★修正ポイント: 顔をきれいに保つため false
         child.castShadow = true;
-        child.receiveShadow = true;
+        child.receiveShadow = false;
       }
     });
 
@@ -107,26 +111,22 @@ function Kariage({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 4. Red (新規追加) - layingアニメーションのループ
+// 4. Red (少年2)
 // ---------------------------------------------------------
 function Red({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
-  // red.glb を読み込み
   const { scene, animations } = useGLTF('/models/red.glb');
   const { actions } = useAnimations(animations, group);
 
   useEffect(() => {
-    // 影の設定
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
+        // ★修正ポイント: 顔をきれいに保つため false
         child.castShadow = true;
-        child.receiveShadow = true;
+        child.receiveShadow = false;
       }
     });
 
-    // 'laying' アニメーションを再生（デフォルトでループします）
-    // もし10秒できっちり切りたい場合はsetTimeoutが必要ですが、
-    // 通常のループ再生で良い場合はこれでOKです。
     actions['laying']?.reset().fadeIn(0.5).play();
 
     return () => {
@@ -134,7 +134,6 @@ function Red({ position }: { position: [number, number, number] }) {
     };
   }, [actions, scene]);
 
-  // 他のキャラと同じくらいのスケールに設定
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
@@ -154,7 +153,7 @@ export default function Home() {
           onUpdate={c => c.lookAt(0, 0, 0)}
         />
         
-        <ambientLight intensity={0.5} />
+        <ambientLight intensity={0.6} /> {/* 少し明るくして顔を見やすく */}
         
         <directionalLight 
           position={[10, 20, 10]} 
@@ -173,8 +172,6 @@ export default function Home() {
           <SceneEnvironment />
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
-          
-          {/* Redを追加: 木の前（Z軸手前）に配置 */}
           <Red position={[0, 0, 2.5]} />
         </Suspense>
 
