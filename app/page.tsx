@@ -6,12 +6,10 @@ import { useGLTF, useAnimations, Html, OrthographicCamera, ContactShadows } from
 import * as THREE from 'three';
 
 // ---------------------------------------------------------
-// 1. 背景（薄い抹茶色の草原）と木
+// 1. 背景と木
 // ---------------------------------------------------------
 function SceneEnvironment() {
   const { scene: treeScene } = useGLTF('/models/tree.glb');
-
-  // 木はリアルでいいので、影を受けたり落としたりする
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
@@ -21,27 +19,18 @@ function SceneEnvironment() {
 
   return (
     <group>
-      {/* 地面: ここに影が落ちる */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#a3b08d" roughness={0.8} metalness={0.1} />
       </mesh>
-      
-      {/* 木 (サイズ 2.0) */}
-      <primitive 
-        object={treeScene} 
-        position={[0, 0, 0]} 
-        scale={2.0} 
-      />
-      
-      {/* 接地感を出すための補助的な影 */}
+      <primitive object={treeScene} position={[0, 0, 0]} scale={2.0} />
       <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
   );
 }
 
 // ---------------------------------------------------------
-// 2. Mint (ペンギン)
+// 2. Mint
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -51,28 +40,28 @@ function Mint({ position }: { position: [number, number, number] }) {
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        // 顔をきれいに保つため receiveShadow: false
         child.castShadow = true;
         child.receiveShadow = false; 
       }
     });
 
     let timeoutId: NodeJS.Timeout;
-
     const playSequence = async () => {
       const randomWait = Math.random() * 5000 + 5000; 
       
-      actions['sleepidle']?.reset().fadeIn(0.5).play();
-      actions['sleeping']?.fadeOut(0.5);
+      const a1 = actions['sleepidle'];
+      const a2 = actions['sleeping'];
+
+      if(a1) a1.reset().fadeIn(0.5).play();
+      if(a2) a2.fadeOut(0.5);
 
       timeoutId = setTimeout(() => {
-        actions['sleepidle']?.fadeOut(0.5);
-        actions['sleeping']?.reset().fadeIn(0.5).play();
+        if(a1) a1.fadeOut(0.5);
+        if(a2) a2.reset().fadeIn(0.5).play();
 
         timeoutId = setTimeout(() => {
           playSequence();
-        }, 17700); // 17.7秒
-
+        }, 17700);
       }, randomWait);
     };
 
@@ -84,7 +73,7 @@ function Mint({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 3. Kariage (少年)
+// 3. Kariage
 // ---------------------------------------------------------
 function Kariage({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -99,10 +88,11 @@ function Kariage({ position }: { position: [number, number, number] }) {
       }
     });
 
-    actions['sitting']?.reset().fadeIn(0.5).play();
+    const action = actions['sitting'];
+    if (action) action.reset().fadeIn(0.5).play();
 
     return () => {
-      actions['sitting']?.fadeOut(0.5);
+      if (action) action.fadeOut(0.5);
     };
   }, [actions, scene]);
 
@@ -110,7 +100,7 @@ function Kariage({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 4. Red (少年2)
+// 4. Red
 // ---------------------------------------------------------
 function Red({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -125,10 +115,11 @@ function Red({ position }: { position: [number, number, number] }) {
       }
     });
 
-    actions['laying']?.reset().fadeIn(0.5).play();
+    const action = actions['laying'];
+    if (action) action.reset().fadeIn(0.5).play();
 
     return () => {
-      actions['laying']?.fadeOut(0.5);
+      if (action) action.fadeOut(0.5);
     };
   }, [actions, scene]);
 
@@ -136,16 +127,19 @@ function Red({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 5. Hat (新規追加) - idle01(8.8s) -> idle02(13.9s) ループ
+// 5. Hat (安全機能付き)
 // ---------------------------------------------------------
 function Hat({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
-  // hat.glb を読み込み
   const { scene, animations } = useGLTF('/models/hat.glb');
-  const { actions } = useAnimations(animations, group);
+  const { actions, names } = useAnimations(animations, group);
+
+  // ★コンソールにアニメ名を表示
+  useEffect(() => {
+    console.log('🤠 Hatのアニメーション一覧:', names);
+  }, [names]);
 
   useEffect(() => {
-    // 影の設定
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
@@ -156,18 +150,29 @@ function Hat({ position }: { position: [number, number, number] }) {
     let timeoutId: NodeJS.Timeout;
 
     const playSequence = async () => {
-      // Step 1: idle01 (8.8秒)
-      // 前のアニメーションをフェードアウトさせ、idle01を再生
-      actions['idle02']?.fadeOut(0.5);
-      actions['idle01']?.reset().fadeIn(0.5).play();
+      // 安全にアクションを取得
+      const anim1 = actions['idle01'];
+      const anim2 = actions['idle02'];
+
+      // もしアニメが見つからなければ警告を出して止める（クラッシュさせない）
+      if (!anim1 || !anim2) {
+        console.warn('⚠️ Hat: アニメーションが見つかりません。コンソールの一覧を確認してください。');
+        // とりあえず最初のアニメを再生しておく
+        if (names.length > 0) {
+          actions[names[0]]?.reset().fadeIn(0.5).play();
+        }
+        return;
+      }
+
+      // 正常な場合のループ処理
+      anim2.fadeOut(0.5);
+      anim1.reset().fadeIn(0.5).play();
 
       timeoutId = setTimeout(() => {
-        // Step 2: idle02 (13.9秒)
-        actions['idle01']?.fadeOut(0.5);
-        actions['idle02']?.reset().fadeIn(0.5).play();
+        anim1.fadeOut(0.5);
+        anim2.reset().fadeIn(0.5).play();
 
         timeoutId = setTimeout(() => {
-          // ループ
           playSequence();
         }, 13900); // 13.9秒
 
@@ -181,9 +186,8 @@ function Hat({ position }: { position: [number, number, number] }) {
       actions['idle01']?.fadeOut(0.5);
       actions['idle02']?.fadeOut(0.5);
     };
-  }, [actions, scene]);
+  }, [actions, scene, names]);
 
-  // 他のキャラと同じくらいのスケールに設定
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
@@ -204,7 +208,6 @@ export default function Home() {
         />
         
         <ambientLight intensity={0.6} />
-        
         <directionalLight 
           position={[10, 20, 10]} 
           intensity={1.5} 
@@ -223,8 +226,6 @@ export default function Home() {
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
-          
-          {/* Hatを追加: RedとKariageの間あたり */}
           <Hat position={[1.5, 0, 0.5]} />
         </Suspense>
 
