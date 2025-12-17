@@ -13,7 +13,7 @@ function SceneEnvironment() {
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
-      child.receiveShadow = true;
+      child.receiveShadow = false;
     }
   });
 
