@@ -14,7 +14,7 @@ function SceneEnvironment() {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
       // 木自身の影を消してスッキリさせる場合は false に
-      child.receiveShadow = true; 
+      child.receiveShadow = false; 
     }
   });
 
