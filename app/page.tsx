@@ -129,9 +129,11 @@ function Red({ position }: { position: [number, number, number] }) {
 // ---------------------------------------------------------
 // 5. Yellow (旧 Hat)
 // ---------------------------------------------------------
+// ---------------------------------------------------------
+// 5. Yellow (Tポーズ対策版)
+// ---------------------------------------------------------
 function Yellow({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
-  // ファイル名を yellow.glb に変更
   const { scene, animations } = useGLTF('/models/yellow.glb');
   const { actions, names } = useAnimations(animations, group);
 
@@ -140,6 +142,7 @@ function Yellow({ position }: { position: [number, number, number] }) {
   }, [names]);
 
   useEffect(() => {
+    // 影の設定
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
@@ -147,35 +150,17 @@ function Yellow({ position }: { position: [number, number, number] }) {
       }
     });
 
-    let timeoutId: NodeJS.Timeout;
+    // ★修正ポイント: 無理にループ処理を書かず、標準のループ機能に任せます
+    const anim = actions['idle01'];
 
-    // シンプルなループ再生関数
-    const playLoop = () => {
-      const anim = actions['idle01'];
-
-      // 安全策
-      if (!anim) {
-        if (names.length > 0) {
-          actions[names[0]]?.reset().fadeIn(0.5).play();
-        }
-        return;
-      }
-
-      // アニメーション再生
+    if (anim) {
+      // 再生するだけ。これで自動的に14秒(アニメの長さ分)でループし続けます
       anim.reset().fadeIn(0.5).play();
-
-      // 14秒後にループ
-      timeoutId = setTimeout(() => {
-        anim.fadeOut(0.5); // 一旦フェードアウト
-        playLoop();        // 再帰呼び出しでループ
-      }, 13500); // 14秒 (14000ms)
-    };
-
-    playLoop();
+    }
 
     return () => {
-      clearTimeout(timeoutId);
-      actions['idle01']?.fadeOut(0.5);
+      // コンポーネントが消える時だけフェードアウト
+      anim?.fadeOut(0.5);
     };
   }, [actions, scene, names]);
 
