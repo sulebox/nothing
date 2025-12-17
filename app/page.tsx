@@ -152,7 +152,6 @@ function Hat({ position }: { position: [number, number, number] }) {
       const anim1 = actions['idle01'];
       const anim2 = actions['idle02'];
 
-      // 安全策: アニメが見つからない場合は最初のアニメを再生
       if (!anim1 || !anim2) {
         if (names.length > 0) {
           actions[names[0]]?.reset().fadeIn(0.5).play();
@@ -160,7 +159,6 @@ function Hat({ position }: { position: [number, number, number] }) {
         return;
       }
 
-      // ループ再生
       anim2.fadeOut(0.5);
       anim1.reset().fadeIn(0.5).play();
 
@@ -170,9 +168,9 @@ function Hat({ position }: { position: [number, number, number] }) {
 
         timeoutId = setTimeout(() => {
           playSequence();
-        }, 13900); // 13.9秒
+        }, 13900); 
 
-      }, 8800); // 8.8秒
+      }, 8800); 
     };
 
     playSequence();
@@ -194,14 +192,11 @@ export default function Home() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
       <Canvas shadows>
-        {/* ★ここがポイント！ 
-            zoom: 60 -> 120 (大きく拡大)
-            lookAt: (0, 0, 0) -> (0, 2.5, 0) (視点を上にずらして木全体を入れる)
-        */}
+        {/* ★ここを変更しました： zoom={90} */}
         <OrthographicCamera 
           makeDefault 
           position={[20, 20, 20]} 
-          zoom={80{ 
+          zoom={80} 
           near={0.1} 
           far={200}
           onUpdate={c => c.lookAt(0, 1.5, 0)}
