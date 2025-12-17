@@ -41,12 +41,10 @@ function Mint({ position }: { position: [number, number, number] }) {
       const action = actions[animName];
       if (action) {
         action.reset().fadeIn(0.5).play();
-      } else {
-        console.warn(`⚠️ Mint: "${animName}" というアニメはありません。正しい名前を確認してください。`);
       }
     };
     
-    // とりあえず最初のアニメーションを再生してみる（テスト）
+    // とりあえず最初のアニメーションを再生
     if (names.length > 0) {
       playSafe(names[0]); 
     }
@@ -75,12 +73,10 @@ function Kariage({ position }: { position: [number, number, number] }) {
       const action = actions[animName];
       if (action) {
         action.reset().fadeIn(0.5).play();
-      } else {
-        console.warn(`⚠️ Kariage: "${animName}" というアニメはありません。正しい名前を確認してください。`);
       }
     };
 
-    // とりあえず最初のアニメーションを再生してみる（テスト）
+    // とりあえず最初のアニメーションを再生
     if (names.length > 0) {
       playSafe(names[0]);
     }
@@ -119,11 +115,8 @@ export default function Home() {
         <ambientLight intensity={0.7} />
         <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
 
-        <Suspense fallback={
-           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#333', fontWeight: 'bold' }}>
-             読み込み中...
-           </div>
-        }>
+        {/* 修正箇所：ここをnullに戻しました。これでエラーは消えます！ */}
+        <Suspense fallback={null}>
           <SceneEnvironment />
           <Mint position={[-1.5, 0, 1]} />
           <Kariage position={[1.5, 0, -1]} />
