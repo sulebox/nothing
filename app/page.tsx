@@ -199,7 +199,7 @@ export default function Home() {
           zoom={80} 
           near={0.1} 
           far={200}
-          onUpdate={c => c.lookAt(0, 1.5, 0)}
+          onUpdate={c => c.lookAt(0, 1.0, 0)}
         />
         
         <ambientLight intensity={0.6} />
