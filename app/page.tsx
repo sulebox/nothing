@@ -51,7 +51,7 @@ function Mint({ position }: { position: [number, number, number] }) {
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        // ★修正ポイント: 影を落とすけど(cast)、自分は受けない(receive: false)
+        // 顔をきれいに保つため receiveShadow: false
         child.castShadow = true;
         child.receiveShadow = false; 
       }
@@ -94,7 +94,6 @@ function Kariage({ position }: { position: [number, number, number] }) {
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        // ★修正ポイント: 顔をきれいに保つため false
         child.castShadow = true;
         child.receiveShadow = false;
       }
@@ -121,7 +120,6 @@ function Red({ position }: { position: [number, number, number] }) {
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        // ★修正ポイント: 顔をきれいに保つため false
         child.castShadow = true;
         child.receiveShadow = false;
       }
@@ -134,6 +132,58 @@ function Red({ position }: { position: [number, number, number] }) {
     };
   }, [actions, scene]);
 
+  return <primitive ref={group} object={scene} position={position} scale={1.8} />;
+}
+
+// ---------------------------------------------------------
+// 5. Hat (新規追加) - idle01(8.8s) -> idle02(13.9s) ループ
+// ---------------------------------------------------------
+function Hat({ position }: { position: [number, number, number] }) {
+  const group = useRef<THREE.Group>(null);
+  // hat.glb を読み込み
+  const { scene, animations } = useGLTF('/models/hat.glb');
+  const { actions } = useAnimations(animations, group);
+
+  useEffect(() => {
+    // 影の設定
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = false;
+      }
+    });
+
+    let timeoutId: NodeJS.Timeout;
+
+    const playSequence = async () => {
+      // Step 1: idle01 (8.8秒)
+      // 前のアニメーションをフェードアウトさせ、idle01を再生
+      actions['idle02']?.fadeOut(0.5);
+      actions['idle01']?.reset().fadeIn(0.5).play();
+
+      timeoutId = setTimeout(() => {
+        // Step 2: idle02 (13.9秒)
+        actions['idle01']?.fadeOut(0.5);
+        actions['idle02']?.reset().fadeIn(0.5).play();
+
+        timeoutId = setTimeout(() => {
+          // ループ
+          playSequence();
+        }, 13900); // 13.9秒
+
+      }, 8800); // 8.8秒
+    };
+
+    playSequence();
+
+    return () => {
+      clearTimeout(timeoutId);
+      actions['idle01']?.fadeOut(0.5);
+      actions['idle02']?.fadeOut(0.5);
+    };
+  }, [actions, scene]);
+
+  // 他のキャラと同じくらいのスケールに設定
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
@@ -153,7 +203,7 @@ export default function Home() {
           onUpdate={c => c.lookAt(0, 0, 0)}
         />
         
-        <ambientLight intensity={0.6} /> {/* 少し明るくして顔を見やすく */}
+        <ambientLight intensity={0.6} />
         
         <directionalLight 
           position={[10, 20, 10]} 
@@ -173,6 +223,9 @@ export default function Home() {
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
+          
+          {/* Hatを追加: RedとKariageの間あたり */}
+          <Hat position={[1.5, 0, 0.5]} />
         </Suspense>
 
       </Canvas>
