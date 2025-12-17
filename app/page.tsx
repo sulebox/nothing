@@ -168,7 +168,7 @@ function Yellow({ position }: { position: [number, number, number] }) {
       timeoutId = setTimeout(() => {
         anim.fadeOut(0.5); // 一旦フェードアウト
         playLoop();        // 再帰呼び出しでループ
-      }, 14000); // 14秒 (14000ms)
+      }, 13500); // 14秒 (14000ms)
     };
 
     playLoop();
