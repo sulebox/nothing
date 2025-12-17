@@ -13,7 +13,8 @@ function SceneEnvironment() {
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
-      child.receiveShadow = true;
+      // 木自身の影を消してスッキリさせる場合は false に
+      child.receiveShadow = false; 
     }
   });
 
@@ -127,10 +128,7 @@ function Red({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 5. Yellow (旧 Hat)
-// ---------------------------------------------------------
-// ---------------------------------------------------------
-// 5. Yellow (Tポーズ対策版)
+// 5. Yellow
 // ---------------------------------------------------------
 function Yellow({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -138,11 +136,6 @@ function Yellow({ position }: { position: [number, number, number] }) {
   const { actions, names } = useAnimations(animations, group);
 
   useEffect(() => {
-    console.log('🟡 Yellowのアニメーション一覧:', names);
-  }, [names]);
-
-  useEffect(() => {
-    // 影の設定
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
@@ -150,16 +143,11 @@ function Yellow({ position }: { position: [number, number, number] }) {
       }
     });
 
-    // ★修正ポイント: 無理にループ処理を書かず、標準のループ機能に任せます
     const anim = actions['idle01'];
-
     if (anim) {
-      // 再生するだけ。これで自動的に14秒(アニメの長さ分)でループし続けます
       anim.reset().fadeIn(0.5).play();
     }
-
     return () => {
-      // コンポーネントが消える時だけフェードアウト
       anim?.fadeOut(0.5);
     };
   }, [actions, scene, names]);
@@ -171,17 +159,62 @@ function Yellow({ position }: { position: [number, number, number] }) {
 // メインページ
 // ---------------------------------------------------------
 export default function Home() {
+  // ★カメラのズーム値を管理する変数
+  const [zoom, setZoom] = useState(80); // デフォルト(PC用)
+
+  // ★画面サイズに合わせてズームを変更するロジック
+  useEffect(() => {
+    const handleResize = () => {
+      // 画面の幅が768px未満(スマホ)ならズームを小さくして全体を映す
+      const isMobile = window.innerWidth < 768;
+      
+      // PCなら 80、スマホなら 45 くらいが丁度いいバランスです
+      setZoom(isMobile ? 45 : 80);
+    };
+
+    // 最初に一回実行
+    handleResize();
+
+    // 画面サイズが変わるたびに実行
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8', position: 'relative' }}>
+      
+      {/* ★文字のレイヤー (Canvasの上に重ねる) */}
+      <div style={{
+        position: 'absolute',
+        top: '40%', // 画像に合わせて少し上に配置
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 10, // 3Dより手前に表示
+        pointerEvents: 'none', // 文字をクリックしても裏の3Dが操作できるようにする
+        textAlign: 'center',
+        width: '100%',
+      }}>
+        <h1 style={{
+          color: '#ff6e6e', // 指定の色
+          fontSize: 'clamp(24px, 5vw, 42px)', // 画面サイズに合わせて文字サイズも変動
+          fontFamily: '"Times New Roman", Times, serif', // セリフ体（明朝系）
+          fontWeight: 'normal',
+          letterSpacing: '0.05em',
+          textShadow: '0px 1px 2px rgba(0,0,0,0.1)' // ほんのり影をつけて読みやすく
+        }}>
+          We are doing nothing.
+        </h1>
+      </div>
+
       <Canvas shadows>
-        {/* ★ここを変更： zoom={80} */}
+        {/* ★可変ズームを適用 (zoom={zoom}) */}
         <OrthographicCamera 
           makeDefault 
           position={[20, 20, 20]} 
-          zoom={80} 
+          zoom={zoom} 
           near={0.1} 
           far={200}
-          onUpdate={c => c.lookAt(0, 1.0, 0)}
+          onUpdate={c => c.lookAt(0, 2.5, 0)}
         />
         
         <ambientLight intensity={0.6} />
@@ -203,7 +236,6 @@ export default function Home() {
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
-          {/* Hat を Yellow に変更 */}
           <Yellow position={[1.5, 0, 0.5]} />
         </Suspense>
 
