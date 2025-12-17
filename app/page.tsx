@@ -14,7 +14,6 @@ function SceneEnvironment() {
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
-      // ★修正: 木の影を true (有効) に戻しました
       child.receiveShadow = true; 
     }
   });
@@ -32,15 +31,14 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// 2. Mint (ペンギン) - 吹き出し機能追加
+// 2. Mint (ペンギン)
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/mint.glb');
   const { actions } = useAnimations(animations, group);
-  const [showBubble, setShowBubble] = useState(false); // 吹き出し管理用
+  const [showBubble, setShowBubble] = useState(false);
 
-  // アニメーション制御
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -73,21 +71,18 @@ function Mint({ position }: { position: [number, number, number] }) {
     return () => clearTimeout(timeoutId);
   }, [actions, scene]);
 
-  // ★追加: 吹き出しのランダム制御 (20~30秒間隔)
   useEffect(() => {
     let bubbleTimeoutId: NodeJS.Timeout;
 
     const scheduleBubble = () => {
-      // 20秒(20000ms) 〜 30秒(30000ms) のランダム
       const randomInterval = Math.random() * 10000 + 20000;
 
       bubbleTimeoutId = setTimeout(() => {
-        setShowBubble(true); // 吹き出し表示
+        setShowBubble(true); 
 
-        // 4秒後に消す
         setTimeout(() => {
           setShowBubble(false);
-          scheduleBubble(); // 次のスケジュールへ
+          scheduleBubble(); 
         }, 4000); 
 
       }, randomInterval);
@@ -102,7 +97,7 @@ function Mint({ position }: { position: [number, number, number] }) {
     <group ref={group} position={position}>
       <primitive object={scene} scale={1.8} />
 
-      {/* ★吹き出し追加 */}
+      {/* ★修正: 位置を1.2に、文字の太さをnormalに変更 */}
       {showBubble && (
         <Html position={[0, 1.2, 0]} center>
           <div style={{
@@ -113,7 +108,7 @@ function Mint({ position }: { position: [number, number, number] }) {
             whiteSpace: 'nowrap',
             fontSize: '14px',
             fontFamily: 'sans-serif',
-            fontWeight: 'bold',
+            fontWeight: 'normal', // ★ここを bold から normal に変更
             boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
             position: 'relative'
           }}>
@@ -227,7 +222,6 @@ export default function Home() {
   useEffect(() => {
     const handleResize = () => {
       const isMobile = window.innerWidth < 768;
-      // ★修正: スマホ時のズームを 55 に設定
       setZoom(isMobile ? 55 : 80);
     };
 
