@@ -177,15 +177,25 @@ export default function Home() {
           shadow-mapSize={[1024, 1024]} 
         />
 
-        {/* Suspenseで囲むことで、読み込み完了まで待機させる */}
-        <Suspense fallback={null}>
-          {/* 環境とキャラクター */}
+        {/* ↓↓↓ ここを書き換え ↓↓↓ */}
+        <Suspense fallback={
+          <div style={{ 
+            position: 'absolute', 
+            top: '50%', 
+            left: '50%', 
+            transform: 'translate(-50%, -50%)',
+            color: '#333',
+            fontSize: '24px',
+            fontWeight: 'bold'
+          }}>
+            3Dモデル読み込み中...
+          </div>
+        }>
           <SceneEnvironment />
-          
-          {/* 木のそばに配置 (位置は適宜調整してください) */}
           <Mint position={[-1.5, 0, 1]} />
           <Kariage position={[1.5, 0, -1]} />
         </Suspense>
+        {/* ↑↑↑ ここまで書き換え ↑↑↑ */}
 
       </Canvas>
     </div>
