@@ -11,15 +11,14 @@ import * as THREE from 'three';
 function SceneEnvironment() {
   return (
     <group>
-      {/* 地面: 色を薄い抹茶色に変更 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
+      {/* 地面: receiveShadow を追加して影を受けるようにする */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
-        {/* ご希望の画像に近い、少しグレーがかった落ち着いた黄緑色 */}
         <meshStandardMaterial color="#a3b08d" />
       </mesh>
       
-      {/* 影 */}
-      <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={20} blur={2} far={4.5} />
+      {/* 接地感を出すための補助的な影 (ContactShadows) */}
+      <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
   );
 }
@@ -56,8 +55,8 @@ function Mint({ position }: { position: [number, number, number] }) {
     return () => clearTimeout(timeoutId);
   }, [actions]);
 
-  // スケールを少し大きく調整
-  return <primitive ref={group} object={scene} position={position} scale={1.8} />;
+  // castShadow を追加して影を落とすようにする
+  return <primitive ref={group} object={scene} position={position} scale={1.8} castShadow />;
 }
 
 // ---------------------------------------------------------
@@ -108,28 +107,26 @@ function Kariage({ position }: { position: [number, number, number] }) {
   }, [actions]);
 
   return (
-    <group ref={group} position={position}>
-      {/* スケールを少し大きく調整 */}
+    // castShadow を追加して影を落とすようにする
+    <group ref={group} position={position} castShadow>
       <primitive object={scene} scale={1.8} />
       
-      {/* 吹き出し: デザインを変更 */}
+      {/* 吹き出し */}
       {showBubble && (
         <Html position={[0, 3, 0]} center>
           <div style={{
             background: 'white',
-            padding: '10px 16px', // 少し大きめに
-            borderRadius: '20px', // 丸みを強く
-            // border: '2px solid #333', // ←枠線を削除
-            color: 'black', // 文字色を黒に
+            padding: '10px 16px',
+            borderRadius: '20px',
+            color: 'black',
             whiteSpace: 'nowrap',
-            fontSize: '16px', // フォントサイズを少し大きく
+            fontSize: '16px',
             fontFamily: 'sans-serif',
             fontWeight: 'bold',
-            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)', // 影を薄く
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
             position: 'relative'
           }}>
             てぶらでインド行く
-            {/* 吹き出しのしっぽ */}
             <div style={{
               position: 'absolute',
               bottom: '-8px',
@@ -139,7 +136,7 @@ function Kariage({ position }: { position: [number, number, number] }) {
               height: 0,
               borderLeft: '8px solid transparent',
               borderRight: '8px solid transparent',
-              borderTop: '8px solid white' // 枠線なしの白い三角
+              borderTop: '8px solid white'
             }} />
           </div>
         </Html>
@@ -153,25 +150,30 @@ function Kariage({ position }: { position: [number, number, number] }) {
 // ---------------------------------------------------------
 export default function Home() {
   return (
-    // 背景色も原っぱの色に合わせて調整
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
+      {/* shadows プロパティを忘れずに */}
       <Canvas shadows>
-        {/* 1) カメラ固定＆ズームイン: zoomの数字を小さくして寄せる (30 -> 15) */}
-        <OrthographicCamera makeDefault position={[20, 20, 20]} zoom={15} near={0.1} far={200} />
+        {/* カメラ調整: 位置を少し下げ、ズームを広げて全体が見えるように */}
+        <OrthographicCamera makeDefault position={[18, 18, 18]} zoom={25} near={0.1} far={200} />
         
-        {/* OrbitControls を削除してカメラを固定 */}
-
         <ambientLight intensity={0.7} />
+        
+        {/* ライトの設定: 影の範囲を広げる設定を追加 */}
         <directionalLight 
           position={[10, 20, 10]} 
           intensity={1.2} 
           castShadow 
-          shadow-mapSize={[1024, 1024]} 
+          shadow-mapSize={[2048, 2048]} // 影の解像度を上げる
+          shadow-camera-top={20}
+          shadow-camera-right={20}
+          shadow-camera-bottom={-20}
+          shadow-camera-left={-20}
+          shadow-camera-far={50}
+          shadow-bias={-0.0001} // 影のアーティファクトを防ぐ微調整
         />
 
         <Suspense fallback={null}>
           <SceneEnvironment />
-          {/* キャラクターの間隔を少し広げる */}
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
         </Suspense>
