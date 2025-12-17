@@ -169,7 +169,7 @@ export default function Home() {
       const isMobile = window.innerWidth < 768;
       
       // PCなら 80、スマホなら 45 くらいが丁度いいバランスです
-      setZoom(isMobile ? 60 : 80);
+      setZoom(isMobile ? 55 : 80);
     };
 
     // 最初に一回実行
