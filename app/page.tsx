@@ -10,10 +10,11 @@ import * as THREE from 'three';
 // ---------------------------------------------------------
 function SceneEnvironment() {
   const { scene: treeScene } = useGLTF('/models/tree.glb');
+  
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
-      // 木自身の影を消してスッキリさせる場合は false に
+      // ★修正: 木の影を true (有効) に戻しました
       child.receiveShadow = true; 
     }
   });
@@ -31,13 +32,15 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// 2. Mint
+// 2. Mint (ペンギン) - 吹き出し機能追加
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/mint.glb');
   const { actions } = useAnimations(animations, group);
+  const [showBubble, setShowBubble] = useState(false); // 吹き出し管理用
 
+  // アニメーション制御
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -70,7 +73,67 @@ function Mint({ position }: { position: [number, number, number] }) {
     return () => clearTimeout(timeoutId);
   }, [actions, scene]);
 
-  return <primitive ref={group} object={scene} position={position} scale={1.8} />;
+  // ★追加: 吹き出しのランダム制御 (20~30秒間隔)
+  useEffect(() => {
+    let bubbleTimeoutId: NodeJS.Timeout;
+
+    const scheduleBubble = () => {
+      // 20秒(20000ms) 〜 30秒(30000ms) のランダム
+      const randomInterval = Math.random() * 10000 + 20000;
+
+      bubbleTimeoutId = setTimeout(() => {
+        setShowBubble(true); // 吹き出し表示
+
+        // 4秒後に消す
+        setTimeout(() => {
+          setShowBubble(false);
+          scheduleBubble(); // 次のスケジュールへ
+        }, 4000); 
+
+      }, randomInterval);
+    };
+
+    scheduleBubble();
+
+    return () => clearTimeout(bubbleTimeoutId);
+  }, []);
+
+  return (
+    <group ref={group} position={position}>
+      <primitive object={scene} scale={1.8} />
+
+      {/* ★吹き出し追加 */}
+      {showBubble && (
+        <Html position={[0, 2.2, 0]} center>
+          <div style={{
+            background: 'white',
+            padding: '10px 16px',
+            borderRadius: '20px',
+            color: 'black',
+            whiteSpace: 'nowrap',
+            fontSize: '14px',
+            fontFamily: 'sans-serif',
+            fontWeight: 'bold',
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+            position: 'relative'
+          }}>
+            あしたから本気だす
+            <div style={{
+              position: 'absolute',
+              bottom: '-8px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderTop: '8px solid white'
+            }} />
+          </div>
+        </Html>
+      )}
+    </group>
+  );
 }
 
 // ---------------------------------------------------------
@@ -159,23 +222,16 @@ function Yellow({ position }: { position: [number, number, number] }) {
 // メインページ
 // ---------------------------------------------------------
 export default function Home() {
-  // ★カメラのズーム値を管理する変数
-  const [zoom, setZoom] = useState(80); // デフォルト(PC用)
+  const [zoom, setZoom] = useState(80);
 
-  // ★画面サイズに合わせてズームを変更するロジック
   useEffect(() => {
     const handleResize = () => {
-      // 画面の幅が768px未満(スマホ)ならズームを小さくして全体を映す
       const isMobile = window.innerWidth < 768;
-      
-      // PCなら 80、スマホなら 45 くらいが丁度いいバランスです
+      // ★修正: スマホ時のズームを 55 に設定
       setZoom(isMobile ? 55 : 80);
     };
 
-    // 最初に一回実行
     handleResize();
-
-    // 画面サイズが変わるたびに実行
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -183,31 +239,30 @@ export default function Home() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8', position: 'relative' }}>
       
-      {/* ★文字のレイヤー (Canvasの上に重ねる) */}
+      {/* 文字レイヤー */}
       <div style={{
         position: 'absolute',
-        top: '40%', // 画像に合わせて少し上に配置
+        top: '40%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        zIndex: 10, // 3Dより手前に表示
-        pointerEvents: 'none', // 文字をクリックしても裏の3Dが操作できるようにする
+        zIndex: 10,
+        pointerEvents: 'none',
         textAlign: 'center',
         width: '100%',
       }}>
         <h1 style={{
-          color: '#ff6e6e', // 指定の色
-          fontSize: 'clamp(24px, 5vw, 42px)', // 画面サイズに合わせて文字サイズも変動
-          fontFamily: '"Times New Roman", Times, serif', // セリフ体（明朝系）
+          color: '#ff6e6e',
+          fontSize: 'clamp(24px, 5vw, 42px)',
+          fontFamily: '"Times New Roman", Times, serif',
           fontWeight: 'normal',
           letterSpacing: '0.05em',
-          textShadow: '0px 1px 2px rgba(0,0,0,0.1)' // ほんのり影をつけて読みやすく
+          textShadow: '0px 1px 2px rgba(0,0,0,0.1)'
         }}>
           We are doing nothing.
         </h1>
       </div>
 
       <Canvas shadows>
-        {/* ★可変ズームを適用 (zoom={zoom}) */}
         <OrthographicCamera 
           makeDefault 
           position={[20, 20, 20]} 
