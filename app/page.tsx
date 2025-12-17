@@ -6,21 +6,19 @@ import { useGLTF, useAnimations, Html, OrthographicCamera, ContactShadows, Orbit
 import * as THREE from 'three';
 
 // ---------------------------------------------------------
-// 1. 背景（野原）と木
+// 1. 背景（シンプルな黄緑色の草原）
 // ---------------------------------------------------------
 function SceneEnvironment() {
-  const { scene } = useGLTF('/models/tree.glb');
+  // ★ tree.glb の読み込みを削除しました
   
   return (
     <group>
-      {/* 地面 */}
+      {/* 地面: シンプルな黄緑色の板 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#aaddaa" />
+        {/* 黄緑色 (YellowGreen: #9ACD32) に設定 */}
+        <meshStandardMaterial color="#9ACD32" />
       </mesh>
-      
-      {/* 木 (真ん中) */}
-      <primitive object={scene} position={[0, 0, 0]} scale={1.5} />
       
       {/* 影 */}
       <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={20} blur={2} far={4.5} />
@@ -42,19 +40,16 @@ function Mint({ position }: { position: [number, number, number] }) {
     const playSequence = async () => {
       // 判明した名前: 'sleepidle', 'sleeping'
       
-      // Step 1: sleepidle (5~10秒ランダム)
       const randomWait = Math.random() * 5000 + 5000; 
       
       actions['sleepidle']?.reset().fadeIn(0.5).play();
       actions['sleeping']?.fadeOut(0.5);
 
       timeoutId = setTimeout(() => {
-        // Step 2: sleeping (10.9秒)
         actions['sleepidle']?.fadeOut(0.5);
         actions['sleeping']?.reset().fadeIn(0.5).play();
 
         timeoutId = setTimeout(() => {
-          // ループ
           playSequence();
         }, 10900);
 
@@ -83,37 +78,32 @@ function Kariage({ position }: { position: [number, number, number] }) {
     const playSequence = async () => {
       // 判明した名前: 'idle', 'sitting', 'sittingdown', 'sittingup'
 
-      // Step 1: sitting (5~15秒ランダム)
       const randomWait = Math.random() * 10000 + 5000;
       
       actions['sittingdown']?.fadeOut(0.5);
       actions['sitting']?.reset().fadeIn(0.5).play();
 
       timeoutId = setTimeout(() => {
-        // Step 2: sittingup (6秒)
         actions['sitting']?.fadeOut(0.5);
         actions['sittingup']?.reset().fadeIn(0.5).play();
 
         timeoutId = setTimeout(() => {
-          // Step 3: idle (5秒) + 吹き出し
           actions['sittingup']?.fadeOut(0.5);
           actions['idle']?.reset().fadeIn(0.5).play();
           setShowBubble(true);
 
           timeoutId = setTimeout(() => {
-            // Step 4: sittingdown (2.2秒)
             setShowBubble(false);
             actions['idle']?.fadeOut(0.5);
             actions['sittingdown']?.reset().fadeIn(0.5).play();
 
             timeoutId = setTimeout(() => {
-              // ループ
               playSequence();
             }, 2200);
 
-          }, 5000); // idle 5秒
+          }, 5000); 
 
-        }, 6000); // sittingup 6秒
+        }, 6000); 
 
       }, randomWait);
     };
@@ -166,12 +156,29 @@ export default function Home() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#f0f0d0' }}>
       <Canvas shadows>
-        {/* カメラ: ズームを少し引いて(zoom=30)、広い範囲が見えるように調整 */}
+        {/* カメラ設定 */}
         <OrthographicCamera makeDefault position={[20, 20, 20]} zoom={30} near={0.1} far={200} />
         
-        {/* マウスでカメラを動かせるように追加 */}
+        {/* グリグリ動かせるようにOrbitControlsを入れています */}
         <OrbitControls />
 
         <ambientLight intensity={0.7} />
         <directionalLight 
-          position={
+          position={[10, 20, 10]} 
+          intensity={1.2} 
+          castShadow 
+          shadow-mapSize={[1024, 1024]} 
+        />
+
+        {/* 読み込み待機 */}
+        <Suspense fallback={null}>
+          <SceneEnvironment />
+          {/* キャラクターのみ配置 */}
+          <Mint position={[-2, 0, 1]} />
+          <Kariage position={[2, 0, -1]} />
+        </Suspense>
+
+      </Canvas>
+    </div>
+  );
+}
