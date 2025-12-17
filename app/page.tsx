@@ -11,13 +11,13 @@ import * as THREE from 'three';
 function SceneEnvironment() {
   return (
     <group>
-      {/* 地面: receiveShadow を追加して影を受けるようにする */}
+      {/* 地面: 影を受ける設定 (receiveShadow) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#a3b08d" />
       </mesh>
       
-      {/* 接地感を出すための補助的な影 (ContactShadows) */}
+      {/* 接地感を出すための補助的な影 */}
       <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
   );
@@ -55,7 +55,7 @@ function Mint({ position }: { position: [number, number, number] }) {
     return () => clearTimeout(timeoutId);
   }, [actions]);
 
-  // castShadow を追加して影を落とすようにする
+  // 影を落とす (castShadow)
   return <primitive ref={group} object={scene} position={position} scale={1.8} castShadow />;
 }
 
@@ -107,7 +107,7 @@ function Kariage({ position }: { position: [number, number, number] }) {
   }, [actions]);
 
   return (
-    // castShadow を追加して影を落とすようにする
+    // 影を落とす (castShadow)
     <group ref={group} position={position} castShadow>
       <primitive object={scene} scale={1.8} />
       
@@ -151,29 +151,41 @@ function Kariage({ position }: { position: [number, number, number] }) {
 export default function Home() {
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8' }}>
-      {/* shadows プロパティを忘れずに */}
       <Canvas shadows>
-        {/* カメラ調整: 位置を少し下げ、ズームを広げて全体が見えるように */}
-        <OrthographicCamera makeDefault position={[18, 18, 18]} zoom={25} near={0.1} far={200} />
+        {/* ★ここが修正ポイント！
+          1. onUpdate={c => c.lookAt(0, 0, 0)} を追加
+             これでカメラが強制的に「ワールドの真ん中」を見続けるようになります。
+          2. zoom={60} に変更
+             かなり大きくしました。これでキャラがはっきり見えるはずです。
+        */}
+        <OrthographicCamera 
+          makeDefault 
+          position={[20, 20, 20]} 
+          zoom={60} 
+          near={0.1} 
+          far={200}
+          onUpdate={c => c.lookAt(0, 0, 0)}
+        />
         
         <ambientLight intensity={0.7} />
         
-        {/* ライトの設定: 影の範囲を広げる設定を追加 */}
+        {/* 影の設定 */}
         <directionalLight 
           position={[10, 20, 10]} 
           intensity={1.2} 
           castShadow 
-          shadow-mapSize={[2048, 2048]} // 影の解像度を上げる
+          shadow-mapSize={[2048, 2048]} 
           shadow-camera-top={20}
           shadow-camera-right={20}
           shadow-camera-bottom={-20}
           shadow-camera-left={-20}
           shadow-camera-far={50}
-          shadow-bias={-0.0001} // 影のアーティファクトを防ぐ微調整
+          shadow-bias={-0.0001}
         />
 
         <Suspense fallback={null}>
           <SceneEnvironment />
+          {/* 位置は変えていません */}
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
         </Suspense>
