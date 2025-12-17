@@ -104,7 +104,7 @@ function Mint({ position }: { position: [number, number, number] }) {
 
       {/* ★吹き出し追加 */}
       {showBubble && (
-        <Html position={[0, 2.2, 0]} center>
+        <Html position={[0, 1.2, 0]} center>
           <div style={{
             background: 'white',
             padding: '10px 16px',
