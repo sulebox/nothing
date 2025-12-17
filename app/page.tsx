@@ -14,7 +14,7 @@ function SceneEnvironment() {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
       // 木自身の影を消してスッキリさせる場合は false に
-      child.receiveShadow = false; 
+      child.receiveShadow = true; 
     }
   });
 
@@ -169,7 +169,7 @@ export default function Home() {
       const isMobile = window.innerWidth < 768;
       
       // PCなら 80、スマホなら 45 くらいが丁度いいバランスです
-      setZoom(isMobile ? 45 : 80);
+      setZoom(isMobile ? 60 : 80);
     };
 
     // 最初に一回実行
