@@ -96,8 +96,6 @@ function Mint({ position }: { position: [number, number, number] }) {
   return (
     <group ref={group} position={position}>
       <primitive object={scene} scale={1.8} />
-
-      {/* ★修正: 位置を1.2に、文字の太さをnormalに変更 */}
       {showBubble && (
         <Html position={[0, 1.2, 0]} center>
           <div style={{
@@ -108,7 +106,7 @@ function Mint({ position }: { position: [number, number, number] }) {
             whiteSpace: 'nowrap',
             fontSize: '14px',
             fontFamily: 'sans-serif',
-            fontWeight: 'normal', // ★ここを bold から normal に変更
+            fontWeight: 'normal',
             boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
             position: 'relative'
           }}>
@@ -214,6 +212,58 @@ function Yellow({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
+// 6. Hedoban (ファイル名修正: hedoban.glb)
+// ---------------------------------------------------------
+function Hedoban({ position }: { position: [number, number, number] }) {
+  const modelRef = useRef<THREE.Group>(null);
+  
+  // ★ここを修正: 全て小文字の 'hedoban.glb' にしました
+  const { scene, animations } = useGLTF('/models/hedoban.glb');
+  const { actions, names } = useAnimations(animations, modelRef);
+
+  useEffect(() => {
+    console.log('🎸 Hedobanのアニメーション一覧:', names);
+  }, [names]);
+
+  useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = false;
+      }
+    });
+
+    // "teeder" アニメーションをループ再生
+    const anim = actions['teeder'];
+    if (anim) {
+      anim.reset().fadeIn(0.5).play();
+    }
+
+    return () => {
+      anim?.fadeOut(0.5);
+    };
+  }, [actions, scene]);
+
+  return (
+    <group position={position}>
+      {/* 切り株 */}
+      <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.3, 0.35, 0.3, 32]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+
+      {/* キャラクター */}
+      <primitive 
+        ref={modelRef} 
+        object={scene} 
+        position={[0, 0.3, 0]} 
+        scale={1.8} 
+      />
+    </group>
+  );
+}
+
+// ---------------------------------------------------------
 // メインページ
 // ---------------------------------------------------------
 export default function Home() {
@@ -286,6 +336,9 @@ export default function Home() {
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[1.5, 0, 0.5]} />
+          
+          {/* Hedoban */}
+          <Hedoban position={[0.8, 0, 3.5]} />
         </Suspense>
 
       </Canvas>
