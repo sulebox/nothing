@@ -212,12 +212,10 @@ function Yellow({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 6. Hedoban (ファイル名修正: hedoban.glb)
+// 6. Hedoban
 // ---------------------------------------------------------
 function Hedoban({ position }: { position: [number, number, number] }) {
   const modelRef = useRef<THREE.Group>(null);
-  
-  // ★ここを修正: 全て小文字の 'hedoban.glb' にしました
   const { scene, animations } = useGLTF('/models/hedoban.glb');
   const { actions, names } = useAnimations(animations, modelRef);
 
@@ -233,7 +231,6 @@ function Hedoban({ position }: { position: [number, number, number] }) {
       }
     });
 
-    // "teeder" アニメーションをループ再生
     const anim = actions['teeder'];
     if (anim) {
       anim.reset().fadeIn(0.5).play();
@@ -337,8 +334,8 @@ export default function Home() {
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[1.5, 0, 0.5]} />
           
-          {/* Hedoban */}
-          <Hedoban position={[0.8, 0, 3.5]} />
+          {/* Hedoban: 位置を右下に移動 [1.5, 0, 4.5] */}
+          <Hedoban position={[1.5, 0, 4.5]} />
         </Suspense>
 
       </Canvas>
