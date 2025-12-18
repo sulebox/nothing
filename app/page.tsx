@@ -335,7 +335,7 @@ export default function Home() {
           <Yellow position={[1.5, 0, 0.5]} />
           
           {/* Hedoban: 位置を右下に移動 [1.5, 0, 4.5] */}
-          <Hedoban position={[1.5, 0, 4.5]} />
+          <Hedoban position={[3.5, 0, 3.5]} />
         </Suspense>
 
       </Canvas>
