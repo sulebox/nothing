@@ -20,6 +20,7 @@ function SceneEnvironment() {
 
   return (
     <group>
+      {/* 地面は receiveShadow がついているので、雲の影を受け止めます */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#a3b08d" roughness={0.8} metalness={0.1} />
@@ -31,7 +32,7 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// キャラクターコンポーネント
+// キャラクターコンポーネント (変更なし)
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -187,23 +188,26 @@ function Hedoban({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// ★修正: 雲の共通設定（エラー対策版）
+// ★修正: 雲の共通設定（影を落とすように変更）
 // ---------------------------------------------------------
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        mesh.castShadow = false; 
+        
+        // ★変更点1: 雲が影を落とすように true に設定
+        mesh.castShadow = true; 
+        // 雲自体は影を受けない設定のまま（自分自身の影で暗くなるのを防ぐため）
         mesh.receiveShadow = false;
 
-        // ★修正ポイント: マテリアルが配列か単体かを判定して処理
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
 
         materials.forEach((mat) => {
           mat.transparent = true;
           mat.opacity = 0.4;
-          mat.depthWrite = false;
+          // ★変更点2: 影を正しく計算させるために depthWrite を true に戻す
+          mat.depthWrite = true;
         });
       }
     });
@@ -327,7 +331,6 @@ export default function Home() {
           <Yellow position={[1.5, 0, 0.5]} />
           <Hedoban position={[1.5, 0, 4.5]} />
 
-          {/* 雲 */}
           <FloatingCloud1 />
           <FloatingCloud2 />
         </Suspense>
