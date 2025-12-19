@@ -20,12 +20,14 @@ function SceneEnvironment() {
 
   return (
     <group>
-      {/* 地面は receiveShadow がついているので、雲の影を受け止めます */}
+      {/* 地面 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#a3b08d" roughness={0.8} metalness={0.1} />
       </mesh>
+      {/* 木 */}
       <primitive object={treeScene} position={[0, 0, 0]} scale={2.0} />
+      {/* 木の根元用の接地影（これはそのまま） */}
       <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
   );
@@ -188,7 +190,7 @@ function Hedoban({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// ★修正: 雲の共通設定（影を落とすように変更）
+// ★修正: 雲の共通設定
 // ---------------------------------------------------------
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
@@ -196,9 +198,8 @@ const useCloudMaterial = (scene: THREE.Group) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         
-        // ★変更点1: 雲が影を落とすように true に設定
-        mesh.castShadow = true; 
-        // 雲自体は影を受けない設定のまま（自分自身の影で暗くなるのを防ぐため）
+        // ★変更点: 雲自体の標準シャドウはOFFに戻す
+        mesh.castShadow = false; 
         mesh.receiveShadow = false;
 
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -206,8 +207,8 @@ const useCloudMaterial = (scene: THREE.Group) => {
         materials.forEach((mat) => {
           mat.transparent = true;
           mat.opacity = 0.4;
-          // ★変更点2: 影を正しく計算させるために depthWrite を true に戻す
-          mat.depthWrite = true;
+          // 半透明表現のために depthWrite は false が望ましい
+          mat.depthWrite = false;
         });
       }
     });
@@ -224,7 +225,8 @@ function FloatingCloud1() {
   
   useCloudMaterial(scene);
 
-  const startPos = new THREE.Vector3(-20, 12, -15);
+  // 開始位置Yを少し下げる
+  const startPos = new THREE.Vector3(-25, 10, -15);
   
   useEffect(() => {
     if (group.current) group.current.position.copy(startPos);
@@ -232,16 +234,31 @@ function FloatingCloud1() {
 
   useFrame(() => {
     if (!group.current) return;
-    group.current.position.x += 0.02;
-    group.current.position.y -= 0.005;
-    group.current.position.z += 0.015;
+    // ★変更点: 横の動き(x)を強く、縦の動き(y)を弱く
+    group.current.position.x += 0.04; // 0.02 -> 0.04
+    group.current.position.y -= 0.002; // 0.005 -> 0.002
+    group.current.position.z += 0.01;  // 0.015 -> 0.01
 
-    if (group.current.position.x > 30) {
+    if (group.current.position.x > 35) {
       group.current.position.copy(startPos);
     }
   });
 
-  return <primitive ref={group} object={scene} scale={2.5} />;
+  return (
+    <group ref={group}>
+      <primitive object={scene} scale={2.5} />
+      {/* ★追加: 雲専用の薄くてボケた影 */}
+      {/* position-y で雲の高さ分だけ下にずらして地面に影を落とす */}
+      <ContactShadows
+        position={[0, -10, 0]} 
+        opacity={0.15} // 薄く (0.3 -> 0.15)
+        scale={8}      // 大きく
+        blur={4}       // 強くぼかす
+        far={20}       // 遠くまで描画
+        color="#5a665e" // 少し緑がかったグレー
+      />
+    </group>
+  );
 }
 
 // ---------------------------------------------------------
@@ -255,8 +272,9 @@ function FloatingCloud2() {
   useCloudMaterial(scene);
 
   const nextStartFromLeftMid = useRef(false);
-  const startPosRight = new THREE.Vector3(15, 8, 10);
-  const startPosLeftMid = new THREE.Vector3(-25, 10, 0);
+  // 開始位置Yを少し下げる
+  const startPosRight = new THREE.Vector3(15, 6, 10);
+  const startPosLeftMid = new THREE.Vector3(-30, 8, 0);
 
   useEffect(() => {
     if (group.current) group.current.position.copy(startPosRight);
@@ -264,11 +282,12 @@ function FloatingCloud2() {
 
   useFrame(() => {
     if (!group.current) return;
-    group.current.position.x += 0.025;
-    group.current.position.y -= 0.008;
-    group.current.position.z += 0.01;
+    // ★変更点: 横の動き(x)を強く、縦の動き(y)を弱く
+    group.current.position.x += 0.05;  // 0.025 -> 0.05
+    group.current.position.y -= 0.003; // 0.008 -> 0.003
+    group.current.position.z += 0.008; // 0.01 -> 0.008
 
-    if (group.current.position.x > 35) {
+    if (group.current.position.x > 40) {
       if (nextStartFromLeftMid.current) {
         group.current.position.copy(startPosLeftMid);
         nextStartFromLeftMid.current = false; 
@@ -279,7 +298,20 @@ function FloatingCloud2() {
     }
   });
 
-  return <primitive ref={group} object={scene} scale={2.0} />;
+  return (
+    <group ref={group}>
+      <primitive object={scene} scale={2.0} />
+      {/* ★追加: 雲専用の薄くてボケた影 */}
+      <ContactShadows
+        position={[0, -7, 0]} // 高さに合わせて調整
+        opacity={0.15}
+        scale={6}
+        blur={4}
+        far={20}
+        color="#5a665e"
+      />
+    </group>
+  );
 }
 
 
