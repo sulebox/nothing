@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense, useMemo } from 'react';
-// ★ useFrame を追加でインポート
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations, Html, OrthographicCamera, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
@@ -25,7 +24,6 @@ function SceneEnvironment() {
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#a3b08d" roughness={0.8} metalness={0.1} />
       </mesh>
-      {/* 木のスケールは 2.0 */}
       <primitive object={treeScene} position={[0, 0, 0]} scale={2.0} />
       <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
@@ -33,8 +31,7 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// キャラクターコンポーネント (Mint, Kariage, Red, Yellow, Hedoban)
-// ※変更点がないため、省略せずにそのまま記載します
+// キャラクターコンポーネント
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -190,52 +187,51 @@ function Hedoban({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// ★新規追加: 雲の共通設定（半透明＆ピンボケ感）
+// ★修正: 雲の共通設定（エラー対策版）
 // ---------------------------------------------------------
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        mesh.castShadow = true; // 雲は影を落とさない
+        mesh.castShadow = false; 
         mesh.receiveShadow = false;
-        // 半透明の設定
-        mesh.material.transparent = true;
-        mesh.material.opacity = 0.4; // 透明度 (0.0〜1.0)
-        // 前後関係を曖昧にしてピンボケ感を出す
-        mesh.material.depthWrite = false; 
+
+        // ★修正ポイント: マテリアルが配列か単体かを判定して処理
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+        materials.forEach((mat) => {
+          mat.transparent = true;
+          mat.opacity = 0.4;
+          mat.depthWrite = false;
+        });
       }
     });
   }, [scene]);
 };
 
 // ---------------------------------------------------------
-// ★新規追加: 雲パターン1 (左上から右下へループ)
+// 雲パターン1 (左上から右下へ)
 // ---------------------------------------------------------
 function FloatingCloud1() {
   const group = useRef<THREE.Group>(null);
-  // 複数の場所で使うためにクローンを作成
   const { scene: originalScene } = useGLTF('/models/cloud.glb');
   const scene = useMemo(() => originalScene.clone(), [originalScene]);
   
-  useCloudMaterial(scene); // マテリアル適用
+  useCloudMaterial(scene);
 
-  // 初期位置 (左上奥)
   const startPos = new THREE.Vector3(-20, 12, -15);
   
   useEffect(() => {
     if (group.current) group.current.position.copy(startPos);
   }, []);
 
-  // 毎フレーム実行されるアニメーション
   useFrame(() => {
     if (!group.current) return;
-    // ゆっくり右下手前へ移動
     group.current.position.x += 0.02;
     group.current.position.y -= 0.005;
     group.current.position.z += 0.015;
 
-    // 画面外に出たらリセット
     if (group.current.position.x > 30) {
       group.current.position.copy(startPos);
     }
@@ -245,7 +241,7 @@ function FloatingCloud1() {
 }
 
 // ---------------------------------------------------------
-// ★新規追加: 雲パターン2 (右下→消える→左中→消える の繰り返し)
+// 雲パターン2 (右下→消える→左中→消える の繰り返し)
 // ---------------------------------------------------------
 function FloatingCloud2() {
   const group = useRef<THREE.Group>(null);
@@ -254,12 +250,8 @@ function FloatingCloud2() {
   
   useCloudMaterial(scene);
 
-  // 次の開始位置を管理するフラグ (true: 左中から, false: 右下から)
   const nextStartFromLeftMid = useRef(false);
-
-  // 初期位置 (右下手前)
   const startPosRight = new THREE.Vector3(15, 8, 10);
-  // もう一つの開始位置 (左中奥)
   const startPosLeftMid = new THREE.Vector3(-25, 10, 0);
 
   useEffect(() => {
@@ -268,21 +260,17 @@ function FloatingCloud2() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ゆっくり右下へ移動
     group.current.position.x += 0.025;
     group.current.position.y -= 0.008;
     group.current.position.z += 0.01;
 
-    // 画面外に出たら位置を切り替えてリセット
     if (group.current.position.x > 35) {
       if (nextStartFromLeftMid.current) {
-        // 左中からスタート
         group.current.position.copy(startPosLeftMid);
-        nextStartFromLeftMid.current = false; // 次は右下から
+        nextStartFromLeftMid.current = false; 
       } else {
-        // 右下からスタート
         group.current.position.copy(startPosRight);
-        nextStartFromLeftMid.current = true; // 次は左中から
+        nextStartFromLeftMid.current = true; 
       }
     }
   });
@@ -309,7 +297,6 @@ export default function Home() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#c9d1b8', position: 'relative' }}>
-      {/* 文字レイヤー */}
       <div style={{
         position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)',
         zIndex: 10, pointerEvents: 'none', textAlign: 'center', width: '100%',
@@ -340,7 +327,7 @@ export default function Home() {
           <Yellow position={[1.5, 0, 0.5]} />
           <Hedoban position={[1.5, 0, 4.5]} />
 
-          {/* ★雲を追加: 他のキャラと同じ並びで配置 */}
+          {/* 雲 */}
           <FloatingCloud1 />
           <FloatingCloud2 />
         </Suspense>
