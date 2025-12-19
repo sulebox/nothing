@@ -197,7 +197,7 @@ const useCloudMaterial = (scene: THREE.Group) => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        mesh.castShadow = false; // 雲は影を落とさない
+        mesh.castShadow = true; // 雲は影を落とさない
         mesh.receiveShadow = false;
         // 半透明の設定
         mesh.material.transparent = true;
