@@ -14,7 +14,6 @@ function SceneEnvironment() {
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
-      // 木は影を受ける（そのまま）
       child.receiveShadow = true; 
     }
   });
@@ -35,7 +34,7 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// Watces (時計)
+// Watces (新規追加) - 木と同じ位置に配置
 // ---------------------------------------------------------
 function Watces({ position }: { position: [number, number, number] }) {
   const { scene } = useGLTF('/models/watces.glb');
@@ -44,8 +43,7 @@ function Watces({ position }: { position: [number, number, number] }) {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
-        // ★修正: 時計は影を受けないように false に変更
-        child.receiveShadow = false;
+        child.receiveShadow = true;
       }
     });
   }, [scene]);
@@ -54,7 +52,7 @@ function Watces({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// キャラクターコンポーネント (変更なし)
+// キャラクターコンポーネント
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -165,7 +163,7 @@ function Red({ position }: { position: [number, number, number] }) {
 function Yellow({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/yellow.glb');
-  const { actions } = useAnimations(animations, group);
+  const { actions, names } = useAnimations(animations, group);
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -247,10 +245,9 @@ function FloatingCloud1() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★修正: 移動速度を半分にする
-    group.current.position.x += 0.02;  // 0.04 -> 0.02
-    group.current.position.y -= 0.001; // 0.002 -> 0.001
-    group.current.position.z += 0.005; // 0.01 -> 0.005
+    group.current.position.x += 0.04;
+    group.current.position.y -= 0.002;
+    group.current.position.z += 0.01;
 
     if (group.current.position.x > 35) {
       group.current.position.copy(startPos);
@@ -281,10 +278,9 @@ function FloatingCloud2() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★修正: 移動速度を半分にする
-    group.current.position.x += 0.025;  // 0.05 -> 0.025
-    group.current.position.y -= 0.0015; // 0.003 -> 0.0015
-    group.current.position.z += 0.004;  // 0.008 -> 0.004
+    group.current.position.x += 0.05;
+    group.current.position.y -= 0.003;
+    group.current.position.z += 0.008;
 
     if (group.current.position.x > 40) {
       if (nextStartFromLeftMid.current) {
@@ -349,16 +345,14 @@ export default function Home() {
         <Suspense fallback={null}>
           <SceneEnvironment />
           
-          {/* Watces: 木と同じ位置 */}
+          {/* ★Watcesを追加: 位置[0, 0, 0] */}
           <Watces position={[0, 0, 0]} />
 
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[1.5, 0, 0.5]} />
-          
-          {/* ★修正: Hedobanの位置を指定座標に変更 */}
-          <Hedoban position={[2.5, 0, 2.5]} />
+          <Hedoban position={[3.0, 0, 3.5]} />
 
           <FloatingCloud1 />
           <FloatingCloud2 />
