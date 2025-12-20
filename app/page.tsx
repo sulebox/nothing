@@ -14,7 +14,6 @@ function SceneEnvironment() {
   treeScene.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       child.castShadow = true;
-      // 木は影を受ける（そのまま）
       child.receiveShadow = true; 
     }
   });
@@ -35,7 +34,7 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// Watces (時計)
+// Watces (時計) - 影を受けない設定
 // ---------------------------------------------------------
 function Watces({ position }: { position: [number, number, number] }) {
   const { scene } = useGLTF('/models/watces.glb');
@@ -44,7 +43,7 @@ function Watces({ position }: { position: [number, number, number] }) {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
-        // ★修正: 時計は影を受けないように false に変更
+        // ★時計は影を受けない
         child.receiveShadow = false;
       }
     });
@@ -54,7 +53,7 @@ function Watces({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// キャラクターコンポーネント (変更なし)
+// キャラクターコンポーネント
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -162,10 +161,13 @@ function Red({ position }: { position: [number, number, number] }) {
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
+// ★修正ポイント: Yellowコンポーネントのエラーを解消
 function Yellow({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/yellow.glb');
-  const { actions } = useAnimations(animations, group);
+  const { actions } = useAnimations(animations, group); 
+  // ここで names を使っていないので、useEffectの依存配列からも削除しました
+
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -176,7 +178,8 @@ function Yellow({ position }: { position: [number, number, number] }) {
     const anim = actions['idle01'];
     if (anim) anim.reset().fadeIn(0.5).play();
     return () => { anim?.fadeOut(0.5); };
-  }, [actions, scene, names]);
+  }, [actions, scene]); // ★ここに 'names' があったのがエラー原因でした。削除済！
+
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
@@ -184,9 +187,11 @@ function Hedoban({ position }: { position: [number, number, number] }) {
   const modelRef = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/hedoban.glb');
   const { actions, names } = useAnimations(animations, modelRef);
+  
   useEffect(() => {
     console.log('🎸 Hedobanのアニメーション一覧:', names);
   }, [names]);
+
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -210,7 +215,7 @@ function Hedoban({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// 雲の設定
+// 雲の設定 (速度ゆっくり)
 // ---------------------------------------------------------
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
@@ -247,10 +252,10 @@ function FloatingCloud1() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★修正: 移動速度を半分にする
-    group.current.position.x += 0.02;  // 0.04 -> 0.02
-    group.current.position.y -= 0.001; // 0.002 -> 0.001
-    group.current.position.z += 0.005; // 0.01 -> 0.005
+    // ★速度: ゆっくり
+    group.current.position.x += 0.02;  
+    group.current.position.y -= 0.001; 
+    group.current.position.z += 0.005; 
 
     if (group.current.position.x > 35) {
       group.current.position.copy(startPos);
@@ -281,10 +286,10 @@ function FloatingCloud2() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★修正: 移動速度を半分にする
-    group.current.position.x += 0.025;  // 0.05 -> 0.025
-    group.current.position.y -= 0.0015; // 0.003 -> 0.0015
-    group.current.position.z += 0.004;  // 0.008 -> 0.004
+    // ★速度: ゆっくり
+    group.current.position.x += 0.025;  
+    group.current.position.y -= 0.0015; 
+    group.current.position.z += 0.004;  
 
     if (group.current.position.x > 40) {
       if (nextStartFromLeftMid.current) {
@@ -349,7 +354,6 @@ export default function Home() {
         <Suspense fallback={null}>
           <SceneEnvironment />
           
-          {/* Watces: 木と同じ位置 */}
           <Watces position={[0, 0, 0]} />
 
           <Mint position={[-2.5, 0, 1.5]} />
@@ -357,7 +361,7 @@ export default function Home() {
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[1.5, 0, 0.5]} />
           
-          {/* ★修正: Hedobanの位置を指定座標に変更 */}
+          {/* Hedoban: [2.5, 0, 2.5] */}
           <Hedoban position={[2.5, 0, 2.5]} />
 
           <FloatingCloud1 />
