@@ -27,14 +27,32 @@ function SceneEnvironment() {
       </mesh>
       {/* 木 */}
       <primitive object={treeScene} position={[0, 0, 0]} scale={2.0} />
-      {/* 木の根元用の接地影（これはそのまま） */}
+      {/* 木の根元用の接地影 */}
       <ContactShadows position={[0, 0, 0]} opacity={0.3} scale={20} blur={2.5} far={4.5} />
     </group>
   );
 }
 
 // ---------------------------------------------------------
-// キャラクターコンポーネント (変更なし)
+// Watces (新規追加) - 木と同じ位置に配置
+// ---------------------------------------------------------
+function Watces({ position }: { position: [number, number, number] }) {
+  const { scene } = useGLTF('/models/watces.glb');
+
+  useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+  }, [scene]);
+
+  return <primitive object={scene} position={position} scale={2.0} />;
+}
+
+// ---------------------------------------------------------
+// キャラクターコンポーネント
 // ---------------------------------------------------------
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -190,7 +208,7 @@ function Hedoban({ position }: { position: [number, number, number] }) {
 }
 
 // ---------------------------------------------------------
-// ★修正: 雲の共通設定
+// 雲の設定
 // ---------------------------------------------------------
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
@@ -198,7 +216,6 @@ const useCloudMaterial = (scene: THREE.Group) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         
-        // ★変更点: 雲自体の標準シャドウはOFFに戻す
         mesh.castShadow = false; 
         mesh.receiveShadow = false;
 
@@ -207,7 +224,6 @@ const useCloudMaterial = (scene: THREE.Group) => {
         materials.forEach((mat) => {
           mat.transparent = true;
           mat.opacity = 0.4;
-          // 半透明表現のために depthWrite は false が望ましい
           mat.depthWrite = false;
         });
       }
@@ -215,17 +231,12 @@ const useCloudMaterial = (scene: THREE.Group) => {
   }, [scene]);
 };
 
-// ---------------------------------------------------------
-// 雲パターン1 (左上から右下へ)
-// ---------------------------------------------------------
 function FloatingCloud1() {
   const group = useRef<THREE.Group>(null);
   const { scene: originalScene } = useGLTF('/models/cloud.glb');
   const scene = useMemo(() => originalScene.clone(), [originalScene]);
   
   useCloudMaterial(scene);
-
-  // 開始位置Yを少し下げる
   const startPos = new THREE.Vector3(-25, 10, -15);
   
   useEffect(() => {
@@ -234,10 +245,9 @@ function FloatingCloud1() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★変更点: 横の動き(x)を強く、縦の動き(y)を弱く
-    group.current.position.x += 0.04; // 0.02 -> 0.04
-    group.current.position.y -= 0.002; // 0.005 -> 0.002
-    group.current.position.z += 0.01;  // 0.015 -> 0.01
+    group.current.position.x += 0.04;
+    group.current.position.y -= 0.002;
+    group.current.position.z += 0.01;
 
     if (group.current.position.x > 35) {
       group.current.position.copy(startPos);
@@ -247,32 +257,18 @@ function FloatingCloud1() {
   return (
     <group ref={group}>
       <primitive object={scene} scale={2.5} />
-      {/* ★追加: 雲専用の薄くてボケた影 */}
-      {/* position-y で雲の高さ分だけ下にずらして地面に影を落とす */}
-      <ContactShadows
-        position={[0, -10, 0]} 
-        opacity={0.15} // 薄く (0.3 -> 0.15)
-        scale={8}      // 大きく
-        blur={4}       // 強くぼかす
-        far={20}       // 遠くまで描画
-        color="#5a665e" // 少し緑がかったグレー
-      />
+      <ContactShadows position={[0, -10, 0]} opacity={0.15} scale={8} blur={4} far={20} color="#5a665e" />
     </group>
   );
 }
 
-// ---------------------------------------------------------
-// 雲パターン2 (右下→消える→左中→消える の繰り返し)
-// ---------------------------------------------------------
 function FloatingCloud2() {
   const group = useRef<THREE.Group>(null);
   const { scene: originalScene } = useGLTF('/models/cloud.glb');
   const scene = useMemo(() => originalScene.clone(), [originalScene]);
   
   useCloudMaterial(scene);
-
   const nextStartFromLeftMid = useRef(false);
-  // 開始位置Yを少し下げる
   const startPosRight = new THREE.Vector3(15, 6, 10);
   const startPosLeftMid = new THREE.Vector3(-30, 8, 0);
 
@@ -282,10 +278,9 @@ function FloatingCloud2() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★変更点: 横の動き(x)を強く、縦の動き(y)を弱く
-    group.current.position.x += 0.05;  // 0.025 -> 0.05
-    group.current.position.y -= 0.003; // 0.008 -> 0.003
-    group.current.position.z += 0.008; // 0.01 -> 0.008
+    group.current.position.x += 0.05;
+    group.current.position.y -= 0.003;
+    group.current.position.z += 0.008;
 
     if (group.current.position.x > 40) {
       if (nextStartFromLeftMid.current) {
@@ -301,15 +296,7 @@ function FloatingCloud2() {
   return (
     <group ref={group}>
       <primitive object={scene} scale={2.0} />
-      {/* ★追加: 雲専用の薄くてボケた影 */}
-      <ContactShadows
-        position={[0, -7, 0]} // 高さに合わせて調整
-        opacity={0.15}
-        scale={6}
-        blur={4}
-        far={20}
-        color="#5a665e"
-      />
+      <ContactShadows position={[0, -7, 0]} opacity={0.15} scale={6} blur={4} far={20} color="#5a665e" />
     </group>
   );
 }
@@ -357,11 +344,15 @@ export default function Home() {
 
         <Suspense fallback={null}>
           <SceneEnvironment />
+          
+          {/* ★Watcesを追加: 位置[0, 0, 0] */}
+          <Watces position={[0, 0, 0]} />
+
           <Mint position={[-2.5, 0, 1.5]} />
           <Kariage position={[2.5, 0, -1.5]} />
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[1.5, 0, 0.5]} />
-          <Hedoban position={[3.0, 0, 3.0]} />
+          <Hedoban position={[2.5, 0, 2.5]} />
 
           <FloatingCloud1 />
           <FloatingCloud2 />
