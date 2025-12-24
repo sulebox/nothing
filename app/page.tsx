@@ -108,7 +108,7 @@ function Mint({ position }: { position: [number, number, number] }) {
     <group ref={group} position={position}>
       <primitive object={scene} scale={1.8} />
       {showBubble && (
-        <Html position={[0, 1.7, 0]} center>
+        <Html position={[0, 1.4, 0]} center>
           <div style={{
             background: 'white', padding: '10px 16px', borderRadius: '20px', color: 'black',
             whiteSpace: 'nowrap', fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'normal',
