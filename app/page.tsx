@@ -362,7 +362,7 @@ export default function Home() {
           <Yellow position={[0.5, 0, -0.5]} />
           
           {/* Hedoban: [2.5, 0, 2.5] */}
-          <Hedoban position={[4.0, 0, 1.5]} />
+          <Hedoban position={[4.0, 0, 2.0]} />
 
           <FloatingCloud1 />
           <FloatingCloud2 />
