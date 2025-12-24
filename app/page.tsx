@@ -16,15 +16,10 @@ const OBSTACLES = [
   new THREE.Vector3(1.0, 0, 0),    // Yellow
   new THREE.Vector3(4.0, 0, 2.0),  // Kuro
 ];
-const SAFE_DISTANCE = 1.5; // 障害物から確保したい安全距離
-
-// ★修正1: 移動速度をもっとゆっくりに (0.02 -> 0.008)
-const MOVE_SPEED = 0.008;
-
+const SAFE_DISTANCE = 1.5; 
+const MOVE_SPEED = 0.008; // ゆっくり歩く
 const WATCH_AREA_RADIUS = 2.0; 
 const FLOAT_HEIGHT = 0.3; 
-
-// ★修正2: 行動範囲の半径 (中心から5.0m)
 const ACTION_RADIUS = 5.0;
 
 type ActionState = 'walk1' | 'walk2' | 'walk3' | 'idleForWatch';
@@ -69,7 +64,7 @@ function Watces({ position }: { position: [number, number, number] }) {
 }
 
 // =========================================================
-// 3. Hedoban (自律行動AI搭載)
+// 3. Hedoban (自律行動AI搭載 + Tポーズ/滑り対策)
 // =========================================================
 function Hedoban({ initialPosition }: { initialPosition: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -83,6 +78,35 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   const currentPos = useRef(new THREE.Vector3(...initialPosition));
   const targetPos = useRef<THREE.Vector3 | null>(null);
 
+  // -------------------------------------------------------
+  // ★修正1: アニメーションの「滑り（Root Motion）」を除去する
+  // -------------------------------------------------------
+  useEffect(() => {
+    // 'walk' という名前のアニメーションを探す
+    const walkClip = animations.find(a => a.name === 'walk');
+    
+    if (walkClip) {
+      // 全てのトラック（動きデータ）をチェック
+      walkClip.tracks.forEach((track) => {
+        // 「Hips（腰）」や「Root（根元）」の位置(.position)を動かすデータがあれば
+        if (track.name.match(/Hips\.position|Root\.position/i) || track.name.endsWith('.position')) {
+          // X(左右)とZ(前後)の動きを強制的に初期値で固定し、Y(上下の揺れ)だけ残す
+          // これにより「その場で足踏み」するアニメーションに書き換える
+          const values = track.values;
+          const initialX = values[0];
+          const initialZ = values[2];
+          
+          for (let i = 0; i < values.length; i += 3) {
+            values[i] = initialX;   // Xを固定
+            // values[i+1] は Y なのでそのまま（上下の揺れは残す）
+            values[i+2] = initialZ; // Zを固定
+          }
+        }
+      });
+    }
+  }, [animations]);
+
+  // 影の設定
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -103,38 +127,20 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     currentActionAnim.current = newAction;
   }, [actions]);
 
-  // -------------------------------------------------------
-  // 安全な目的地を見つける (中心から半径5.0m以内)
-  // -------------------------------------------------------
   const findSafeTarget = useCallback((): THREE.Vector3 => {
     let safePos: THREE.Vector3 | null = null;
     let attempts = 0;
-    
     while (!safePos && attempts < 30) {
       attempts++;
-      
-      // ★修正ポイント: 中心(0,0,0)からのランダムな位置を生成
-      const r = Math.random() * ACTION_RADIUS; // 0 〜 5.0
-      const theta = Math.random() * Math.PI * 2; // 0 〜 360度
-      
-      const candidate = new THREE.Vector3(
-        Math.cos(theta) * r,
-        0,
-        Math.sin(theta) * r
-      );
-
-      // 障害物との距離チェック
+      const r = Math.random() * ACTION_RADIUS;
+      const theta = Math.random() * Math.PI * 2;
+      const candidate = new THREE.Vector3(Math.cos(theta) * r, 0, Math.sin(theta) * r);
       const isSafe = OBSTACLES.every(obstacle => candidate.distanceTo(obstacle) > SAFE_DISTANCE);
-      
-      if (isSafe) {
-        safePos = candidate;
-      }
+      if (isSafe) safePos = candidate;
     }
-    // 見つからなければ現在地維持
     return safePos || currentPos.current.clone();
   }, []);
 
-  // 行動決定ロジック
   const decideNextAction = useCallback(() => {
     const rand = Math.random();
     let nextState: ActionState;
@@ -151,15 +157,12 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       setBubbleText("砂時計見よっと");
       fadeToAction('idle');
       setTimeout(decideNextAction, 4000);
-
     } else {
       targetPos.current = findSafeTarget();
       fadeToAction('walk');
-      
       if (group.current && targetPos.current) {
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
-
       switch (nextState) {
         case 'walk1': setBubbleText("いいお天気"); break;
         case 'walk2': setBubbleText("お散歩しよっと"); break;
@@ -168,23 +171,30 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
   }, [fadeToAction, findSafeTarget]);
 
+  // -------------------------------------------------------
+  // ★修正2: 初期化時に即座にアニメを再生してTポーズを防ぐ
+  // -------------------------------------------------------
   useEffect(() => {
     if (group.current) {
       group.current.position.set(...initialPosition);
     }
+
+    // ★重要: AIが考える前に、とりあえず「idle」を再生して棒立ち回避
+    if (actions['idle']) {
+      actions['idle'].reset().play();
+      currentActionAnim.current = actions['idle'];
+    }
+
+    // 1秒後にAI思考開始
     const timer = setTimeout(decideNextAction, 1000);
     return () => clearTimeout(timer);
-  }, []); 
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 移動・浮遊処理
   useFrame(() => {
     if (!group.current) return;
-
-    // 移動
     if (targetPos.current) {
       const direction = targetPos.current.clone().sub(currentPos.current);
       const distance = direction.length();
-
       if (distance > MOVE_SPEED) {
         direction.normalize().multiplyScalar(MOVE_SPEED);
         currentPos.current.add(direction);
@@ -194,22 +204,18 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
         decideNextAction();
       }
     }
-
-    // 浮遊
     const distFromCenter = Math.sqrt(currentPos.current.x ** 2 + currentPos.current.z ** 2);
     let targetY = 0;
     if (distFromCenter < WATCH_AREA_RADIUS) {
       targetY = FLOAT_HEIGHT;
     }
     currentPos.current.y = THREE.MathUtils.lerp(currentPos.current.y, targetY, 0.1);
-
     group.current.position.copy(currentPos.current);
   });
 
   return (
     <group ref={group}>
       <primitive object={scene} scale={1.8} />
-      
       {bubbleText && (
         <Html position={[0, 2.2, 0]} center>
           <div style={{
