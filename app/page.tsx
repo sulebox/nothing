@@ -357,7 +357,7 @@ export default function Home() {
           <Watces position={[0, 0, 0]} />
 
           <Mint position={[-2.5, 0, 1.5]} />
-          <Kariage position={[2.5, 0, -1.0]} />
+          <Kariage position={[3.0, 0, -1.0]} />
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[0.5, 0, -0.5]} />
           
