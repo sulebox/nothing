@@ -34,7 +34,7 @@ function SceneEnvironment() {
 }
 
 // ---------------------------------------------------------
-// Watces (時計) - 影を受けない設定
+// Watces (時計)
 // ---------------------------------------------------------
 function Watces({ position }: { position: [number, number, number] }) {
   const { scene } = useGLTF('/models/watces.glb');
@@ -43,7 +43,6 @@ function Watces({ position }: { position: [number, number, number] }) {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
-        // ★時計は影を受けない
         child.receiveShadow = false;
       }
     });
@@ -108,7 +107,7 @@ function Mint({ position }: { position: [number, number, number] }) {
     <group ref={group} position={position}>
       <primitive object={scene} scale={1.8} />
       {showBubble && (
-        <Html position={[0, 1.4, 0]} center>
+        <Html position={[0, 1.2, 0]} center>
           <div style={{
             background: 'white', padding: '10px 16px', borderRadius: '20px', color: 'black',
             whiteSpace: 'nowrap', fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'normal',
@@ -161,12 +160,10 @@ function Red({ position }: { position: [number, number, number] }) {
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
-// ★修正ポイント: Yellowコンポーネントのエラーを解消
 function Yellow({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/yellow.glb');
-  const { actions } = useAnimations(animations, group); 
-  // ここで names を使っていないので、useEffectの依存配列からも削除しました
+  const { actions } = useAnimations(animations, group);
 
   useEffect(() => {
     scene.traverse((child) => {
@@ -178,18 +175,20 @@ function Yellow({ position }: { position: [number, number, number] }) {
     const anim = actions['idle01'];
     if (anim) anim.reset().fadeIn(0.5).play();
     return () => { anim?.fadeOut(0.5); };
-  }, [actions, scene]); // ★ここに 'names' があったのがエラー原因でした。削除済！
+  }, [actions, scene]);
 
   return <primitive ref={group} object={scene} position={position} scale={1.8} />;
 }
 
-function Hedoban({ position }: { position: [number, number, number] }) {
+// ★修正: Hedoban を Kuro に変更
+function Kuro({ position }: { position: [number, number, number] }) {
   const modelRef = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF('/models/hedoban.glb');
+  // ★ファイル名を kuro.glb に変更
+  const { scene, animations } = useGLTF('/models/kuro.glb');
   const { actions, names } = useAnimations(animations, modelRef);
   
   useEffect(() => {
-    console.log('🎸 Hedobanのアニメーション一覧:', names);
+    console.log('🎸 Kuroのアニメーション一覧:', names);
   }, [names]);
 
   useEffect(() => {
@@ -199,23 +198,27 @@ function Hedoban({ position }: { position: [number, number, number] }) {
         child.receiveShadow = false;
       }
     });
+    // アニメーション名はそのまま "teeder"
     const anim = actions['teeder'];
     if (anim) anim.reset().fadeIn(0.5).play();
     return () => { anim?.fadeOut(0.5); };
   }, [actions, scene]);
+
   return (
     <group position={position}>
+      {/* 切り株 */}
       <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.3, 0.35, 0.3, 32]} />
         <meshStandardMaterial color="#8B4513" />
       </mesh>
+      {/* キャラクター (Kuro) */}
       <primitive ref={modelRef} object={scene} position={[0, 0.3, 0]} scale={1.8} />
     </group>
   );
 }
 
 // ---------------------------------------------------------
-// 雲の設定 (速度ゆっくり)
+// 雲の設定
 // ---------------------------------------------------------
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
@@ -252,7 +255,6 @@ function FloatingCloud1() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★速度: ゆっくり
     group.current.position.x += 0.02;  
     group.current.position.y -= 0.001; 
     group.current.position.z += 0.005; 
@@ -286,7 +288,6 @@ function FloatingCloud2() {
 
   useFrame(() => {
     if (!group.current) return;
-    // ★速度: ゆっくり
     group.current.position.x += 0.025;  
     group.current.position.y -= 0.0015; 
     group.current.position.z += 0.004;  
@@ -356,11 +357,14 @@ export default function Home() {
           
           <Watces position={[0, 0, 0]} />
 
+          {/* ★修正: 各キャラクターの座標を指定された値に変更 */}
           <Mint position={[-2.5, 0, 1.0]} />
           <Kariage position={[3.5, 0, -1.0]} />
           <Red position={[0, 0, 2.5]} />
           <Yellow position={[1.0, 0, 0]} />
-          <Hedoban position={[4.0, 0, 2.0]} />
+          
+          {/* ★修正: Hedoban を Kuro に置き換え、座標も指定された値に変更 */}
+          <Kuro position={[4.0, 0, 2.0]} />
 
           <FloatingCloud1 />
           <FloatingCloud2 />
