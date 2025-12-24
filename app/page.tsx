@@ -64,12 +64,34 @@ function Watces({ position }: { position: [number, number, number] }) {
 }
 
 // =========================================================
-// 3. Hedoban (自律行動AI搭載 + Tポーズ/滑り対策)
+// 3. Hedoban (自律行動AI + その場歩き強制修正)
 // =========================================================
 function Hedoban({ initialPosition }: { initialPosition: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/hedoban.glb');
-  const { actions } = useAnimations(animations, group);
+
+  // -------------------------------------------------------
+  // ★重要修正: アニメーションデータのクレンジング
+  // useAnimationsに渡す「前」に、移動情報を削除した新しいアニメーションデータを作成します
+  // -------------------------------------------------------
+  const cleanAnimations = useMemo(() => {
+    // 元のデータを汚さないように複製
+    const clonedAnimations = animations.map((clip) => clip.clone());
+
+    // 'walk' アニメーションを探す
+    const walkClip = clonedAnimations.find((clip) => clip.name === 'walk');
+
+    if (walkClip) {
+      // トラック（動きのデータ）の中から、'.position'（位置移動）を含むものを全て除外する
+      // これにより、腰やルートボーンの移動がなくなり、完全な「その場歩き」になります
+      walkClip.tracks = walkClip.tracks.filter((track) => !track.name.endsWith('.position'));
+    }
+
+    return clonedAnimations;
+  }, [animations]);
+
+  // ★修正後の cleanAnimations を使ってアクションを作成
+  const { actions } = useAnimations(cleanAnimations, group);
   
   const [bubbleText, setBubbleText] = useState<string | null>(null);
   const currentStateStr = useRef<ActionState>('idleForWatch');
@@ -77,34 +99,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
 
   const currentPos = useRef(new THREE.Vector3(...initialPosition));
   const targetPos = useRef<THREE.Vector3 | null>(null);
-
-  // -------------------------------------------------------
-  // ★修正1: アニメーションの「滑り（Root Motion）」を除去する
-  // -------------------------------------------------------
-  useEffect(() => {
-    // 'walk' という名前のアニメーションを探す
-    const walkClip = animations.find(a => a.name === 'walk');
-    
-    if (walkClip) {
-      // 全てのトラック（動きデータ）をチェック
-      walkClip.tracks.forEach((track) => {
-        // 「Hips（腰）」や「Root（根元）」の位置(.position)を動かすデータがあれば
-        if (track.name.match(/Hips\.position|Root\.position/i) || track.name.endsWith('.position')) {
-          // X(左右)とZ(前後)の動きを強制的に初期値で固定し、Y(上下の揺れ)だけ残す
-          // これにより「その場で足踏み」するアニメーションに書き換える
-          const values = track.values;
-          const initialX = values[0];
-          const initialZ = values[2];
-          
-          for (let i = 0; i < values.length; i += 3) {
-            values[i] = initialX;   // Xを固定
-            // values[i+1] は Y なのでそのまま（上下の揺れは残す）
-            values[i+2] = initialZ; // Zを固定
-          }
-        }
-      });
-    }
-  }, [animations]);
 
   // 影の設定
   useEffect(() => {
@@ -123,7 +117,8 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     if (currentActionAnim.current) {
       currentActionAnim.current.fadeOut(duration);
     }
-    newAction.reset().fadeIn(duration).play();
+    // アニメーション速度調整 (少しゆっくり歩かせるなど)
+    newAction.reset().setEffectiveTimeScale(1.0).fadeIn(duration).play();
     currentActionAnim.current = newAction;
   }, [actions]);
 
@@ -159,7 +154,7 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       setTimeout(decideNextAction, 4000);
     } else {
       targetPos.current = findSafeTarget();
-      fadeToAction('walk');
+      fadeToAction('walk'); // ここで再生されるのは「移動削除済み」のwalkです
       if (group.current && targetPos.current) {
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
@@ -171,21 +166,16 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
   }, [fadeToAction, findSafeTarget]);
 
-  // -------------------------------------------------------
-  // ★修正2: 初期化時に即座にアニメを再生してTポーズを防ぐ
-  // -------------------------------------------------------
+  // 初期化：Tポーズ対策
   useEffect(() => {
     if (group.current) {
       group.current.position.set(...initialPosition);
     }
-
-    // ★重要: AIが考える前に、とりあえず「idle」を再生して棒立ち回避
+    // 即座にIdle再生
     if (actions['idle']) {
       actions['idle'].reset().play();
       currentActionAnim.current = actions['idle'];
     }
-
-    // 1秒後にAI思考開始
     const timer = setTimeout(decideNextAction, 1000);
     return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
