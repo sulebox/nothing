@@ -8,7 +8,6 @@ import * as THREE from 'three';
 // =========================================================
 // 定数・設定
 // =========================================================
-// 障害物となるオブジェクトの固定座標リスト（木、他のキャラの初期位置）
 const OBSTACLES = [
   new THREE.Vector3(0, 0, 0),      // Tree & Watches center
   new THREE.Vector3(-2.5, 0, 1.0), // Mint
@@ -18,11 +17,16 @@ const OBSTACLES = [
   new THREE.Vector3(4.0, 0, 2.0),  // Kuro
 ];
 const SAFE_DISTANCE = 1.5; // 障害物から確保したい安全距離
-const MOVE_SPEED = 0.02;   // 移動速度
-const WATCH_AREA_RADIUS = 2.0; // 砂時計エリアの半径
-const FLOAT_HEIGHT = 0.3; // 浮く高さ
 
-// 行動状態の定義
+// ★修正1: 移動速度をもっとゆっくりに (0.02 -> 0.008)
+const MOVE_SPEED = 0.008;
+
+const WATCH_AREA_RADIUS = 2.0; 
+const FLOAT_HEIGHT = 0.3; 
+
+// ★修正2: 行動範囲の半径 (中心から5.0m)
+const ACTION_RADIUS = 5.0;
+
 type ActionState = 'walk1' | 'walk2' | 'walk3' | 'idleForWatch';
 
 // =========================================================
@@ -72,16 +76,13 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   const { scene, animations } = useGLTF('/models/hedoban.glb');
   const { actions } = useAnimations(animations, group);
   
-  // 状態管理
   const [bubbleText, setBubbleText] = useState<string | null>(null);
-  const currentStateStr = useRef<ActionState>('idleForWatch'); // 現在の行動状態文字
-  const currentActionAnim = useRef<THREE.AnimationAction | null>(null); // 現在再生中のアニメーション
+  const currentStateStr = useRef<ActionState>('idleForWatch');
+  const currentActionAnim = useRef<THREE.AnimationAction | null>(null);
 
-  // 移動用データ
-  const currentPos = useRef(new THREE.Vector3(...initialPosition)); // 現在位置
-  const targetPos = useRef<THREE.Vector3 | null>(null); // 目的地
+  const currentPos = useRef(new THREE.Vector3(...initialPosition));
+  const targetPos = useRef<THREE.Vector3 | null>(null);
 
-  // 影の設定
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -91,9 +92,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     });
   }, [scene]);
 
-  // -------------------------------------------------------
-  // ヘルパー関数: アニメーション切り替え
-  // -------------------------------------------------------
   const fadeToAction = useCallback((animName: string, duration: number = 0.5) => {
     const newAction = actions[animName];
     if (!newAction || currentActionAnim.current === newAction) return;
@@ -106,42 +104,38 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   }, [actions]);
 
   // -------------------------------------------------------
-  // ヘルパー関数: 安全な目的地を見つける
+  // 安全な目的地を見つける (中心から半径5.0m以内)
   // -------------------------------------------------------
   const findSafeTarget = useCallback((): THREE.Vector3 => {
     let safePos: THREE.Vector3 | null = null;
     let attempts = 0;
-    // 最大30回試行して安全な場所を探す
+    
     while (!safePos && attempts < 30) {
       attempts++;
-      // ランダムな方向と距離(2m〜6m)を決定
-      const angle = Math.random() * Math.PI * 2;
-      const distance = 2.0 + Math.random() * 4.0;
+      
+      // ★修正ポイント: 中心(0,0,0)からのランダムな位置を生成
+      const r = Math.random() * ACTION_RADIUS; // 0 〜 5.0
+      const theta = Math.random() * Math.PI * 2; // 0 〜 360度
+      
       const candidate = new THREE.Vector3(
-        currentPos.current.x + Math.cos(angle) * distance,
-        0, // 一旦地面の高さで計算
-        currentPos.current.z + Math.sin(angle) * distance
+        Math.cos(theta) * r,
+        0,
+        Math.sin(theta) * r
       );
 
-      // 全ての障害物から十分離れているかチェック
+      // 障害物との距離チェック
       const isSafe = OBSTACLES.every(obstacle => candidate.distanceTo(obstacle) > SAFE_DISTANCE);
       
-      // 行動範囲を制限（遠すぎたら除外）
-      const isWithinBounds = candidate.length() < 12.0;
-
-      if (isSafe && isWithinBounds) {
+      if (isSafe) {
         safePos = candidate;
       }
     }
-    // 見つからなければ少しだけ移動するフォールバック
-    return safePos || currentPos.current.clone().add(new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5));
+    // 見つからなければ現在地維持
+    return safePos || currentPos.current.clone();
   }, []);
 
-  // -------------------------------------------------------
-  // 主な行動決定ロジック
-  // -------------------------------------------------------
+  // 行動決定ロジック
   const decideNextAction = useCallback(() => {
-    // 次の行動をランダムに決定 (移動3種:待機1種 = 3:1の割合)
     const rand = Math.random();
     let nextState: ActionState;
 
@@ -153,24 +147,19 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     currentStateStr.current = nextState;
 
     if (nextState === 'idleForWatch') {
-      // 待機行動: 停止して砂時計を見る
-      targetPos.current = null; // 移動目標なし
+      targetPos.current = null;
       setBubbleText("砂時計見よっと");
       fadeToAction('idle');
-      // 4秒後に次の行動へ
       setTimeout(decideNextAction, 4000);
 
     } else {
-      // 移動行動: 目的地を決めて歩き出す
       targetPos.current = findSafeTarget();
       fadeToAction('walk');
       
-      // 向きを目的地に合わせる
       if (group.current && targetPos.current) {
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
 
-      // 吹き出しの内容設定
       switch (nextState) {
         case 'walk1': setBubbleText("いいお天気"); break;
         case 'walk2': setBubbleText("お散歩しよっと"); break;
@@ -179,56 +168,41 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
   }, [fadeToAction, findSafeTarget]);
 
-  // 初期化: 最初の行動を開始
   useEffect(() => {
-    // 初期位置にセット
     if (group.current) {
       group.current.position.set(...initialPosition);
     }
-    // 少し待ってから行動開始
     const timer = setTimeout(decideNextAction, 1000);
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
-
-  // -------------------------------------------------------
-  // 毎フレームの更新処理 (移動と浮遊)
-  // -------------------------------------------------------
+  // 移動・浮遊処理
   useFrame(() => {
     if (!group.current) return;
 
-    // 1. 移動処理（目的地がある場合）
+    // 移動
     if (targetPos.current) {
       const direction = targetPos.current.clone().sub(currentPos.current);
       const distance = direction.length();
 
       if (distance > MOVE_SPEED) {
-        // 目的地に向かって進む
         direction.normalize().multiplyScalar(MOVE_SPEED);
         currentPos.current.add(direction);
       } else {
-        // 到着した
         currentPos.current.copy(targetPos.current);
         targetPos.current = null;
-        // 次の行動を決定
         decideNextAction();
       }
     }
 
-    // 2. 特殊地形（砂時計エリア）での浮遊処理
-    // 原点(砂時計の位置)からの平面距離を計算
+    // 浮遊
     const distFromCenter = Math.sqrt(currentPos.current.x ** 2 + currentPos.current.z ** 2);
     let targetY = 0;
-
     if (distFromCenter < WATCH_AREA_RADIUS) {
-      // エリア内なら浮く目標高さを設定
       targetY = FLOAT_HEIGHT;
     }
-
-    // 現在のY座標を目標のY座標に近づける（スムーズな動き）
     currentPos.current.y = THREE.MathUtils.lerp(currentPos.current.y, targetY, 0.1);
 
-    // 3. 計算した位置をモデルに適用
     group.current.position.copy(currentPos.current);
   });
 
@@ -236,7 +210,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     <group ref={group}>
       <primitive object={scene} scale={1.8} />
       
-      {/* 吹き出し */}
       {bubbleText && (
         <Html position={[0, 2.2, 0]} center>
           <div style={{
@@ -258,8 +231,7 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
 }
 
 // =========================================================
-// その他のキャラクター (Mint, Kariage, Red, Yellow, Kuro)
-// ※ 変更なしのため省略します。元のコードをそのまま使います。
+// 他キャラクター (Mint, Kariage, Red, Yellow, Kuro)
 // =========================================================
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -359,7 +331,7 @@ function Kuro({ position }: { position: [number, number, number] }) {
 }
 
 // =========================================================
-// 雲の設定 (省略なし)
+// 雲の設定
 // =========================================================
 const useCloudMaterial = (scene: THREE.Group) => {
   useMemo(() => {
@@ -432,7 +404,6 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // RedとYellowの中間地点を計算
   const redPos = new THREE.Vector3(0, 0, 2.5);
   const yellowPos = new THREE.Vector3(1.0, 0, 0);
   const hedobanInitPos = new THREE.Vector3().addVectors(redPos, yellowPos).multiplyScalar(0.5);
@@ -464,7 +435,6 @@ export default function Home() {
           <Yellow position={[1.0, 0, 0]} />
           <Kuro position={[4.0, 0, 2.0]} />
 
-          {/* ★自律行動するHedobanを追加 (初期位置はRedとYellowの中間) */}
           <Hedoban initialPosition={[hedobanInitPos.x, hedobanInitPos.y, hedobanInitPos.z]} />
 
           <FloatingCloud1 />
