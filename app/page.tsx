@@ -359,7 +359,7 @@ export default function Home() {
           <Mint position={[-2.5, 0, 1.0]} />
           <Kariage position={[3.5, 0, -1.0]} />
           <Red position={[0, 0, 2.5]} />
-          <Yellow position={[0.5, 0, -0.5]} />
+          <Yellow position={[0.5, 0, 0]} />
           
           {/* Hedoban: [2.5, 0, 2.5] */}
           <Hedoban position={[4.0, 0, 2.0]} />
