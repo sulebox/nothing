@@ -17,8 +17,11 @@ const OBSTACLES = [
   new THREE.Vector3(4.0, 0, 2.0),  // Kuro
 ];
 const SAFE_DISTANCE = 1.5; 
-const MOVE_SPEED = 0.008; // ゆっくり歩く
-const WATCH_AREA_RADIUS = 2.0; 
+const MOVE_SPEED = 0.008; 
+
+// ★修正: 浮遊エリアの半径を広げる (2.0 -> 6.0)
+const WATCH_AREA_RADIUS = 6.0; 
+
 const FLOAT_HEIGHT = 0.3; 
 const ACTION_RADIUS = 5.0;
 
@@ -70,27 +73,15 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/hedoban.glb');
 
-  // -------------------------------------------------------
-  // ★重要修正: アニメーションデータのクレンジング
-  // useAnimationsに渡す「前」に、移動情報を削除した新しいアニメーションデータを作成します
-  // -------------------------------------------------------
   const cleanAnimations = useMemo(() => {
-    // 元のデータを汚さないように複製
     const clonedAnimations = animations.map((clip) => clip.clone());
-
-    // 'walk' アニメーションを探す
     const walkClip = clonedAnimations.find((clip) => clip.name === 'walk');
-
     if (walkClip) {
-      // トラック（動きのデータ）の中から、'.position'（位置移動）を含むものを全て除外する
-      // これにより、腰やルートボーンの移動がなくなり、完全な「その場歩き」になります
       walkClip.tracks = walkClip.tracks.filter((track) => !track.name.endsWith('.position'));
     }
-
     return clonedAnimations;
   }, [animations]);
 
-  // ★修正後の cleanAnimations を使ってアクションを作成
   const { actions } = useAnimations(cleanAnimations, group);
   
   const [bubbleText, setBubbleText] = useState<string | null>(null);
@@ -100,7 +91,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   const currentPos = useRef(new THREE.Vector3(...initialPosition));
   const targetPos = useRef<THREE.Vector3 | null>(null);
 
-  // 影の設定
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -117,7 +107,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     if (currentActionAnim.current) {
       currentActionAnim.current.fadeOut(duration);
     }
-    // アニメーション速度調整 (少しゆっくり歩かせるなど)
     newAction.reset().setEffectiveTimeScale(1.0).fadeIn(duration).play();
     currentActionAnim.current = newAction;
   }, [actions]);
@@ -154,7 +143,7 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       setTimeout(decideNextAction, 4000);
     } else {
       targetPos.current = findSafeTarget();
-      fadeToAction('walk'); // ここで再生されるのは「移動削除済み」のwalkです
+      fadeToAction('walk');
       if (group.current && targetPos.current) {
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
@@ -166,12 +155,10 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
   }, [fadeToAction, findSafeTarget]);
 
-  // 初期化：Tポーズ対策
   useEffect(() => {
     if (group.current) {
       group.current.position.set(...initialPosition);
     }
-    // 即座にIdle再生
     if (actions['idle']) {
       actions['idle'].reset().play();
       currentActionAnim.current = actions['idle'];
@@ -196,6 +183,7 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
     const distFromCenter = Math.sqrt(currentPos.current.x ** 2 + currentPos.current.z ** 2);
     let targetY = 0;
+    // 中心からの距離が WATCH_AREA_RADIUS (6.0) 未満なら浮く
     if (distFromCenter < WATCH_AREA_RADIUS) {
       targetY = FLOAT_HEIGHT;
     }
