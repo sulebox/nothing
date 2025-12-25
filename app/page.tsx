@@ -19,7 +19,7 @@ const OBSTACLES = [
 
 const SAFE_DISTANCE = 1.2;
 // ★修正: 移動速度を速くする (0.008 -> 0.015)
-const MOVE_SPEED = 0.015; 
+const MOVE_SPEED = 0.02; 
 
 const ACTION_RADIUS = 5.0;
 const CLIMB_OFFSET = 0.3; 
