@@ -17,10 +17,12 @@ const OBSTACLES = [
   new THREE.Vector3(4.0, 0, 2.0),  // Kuro
 ];
 
-const SAFE_DISTANCE = 1.2; // 障害物判定の距離
-const MOVE_SPEED = 0.008; 
+const SAFE_DISTANCE = 1.2;
+// ★修正: 移動速度を速くする (0.008 -> 0.015)
+const MOVE_SPEED = 0.015; 
+
 const ACTION_RADIUS = 5.0;
-const CLIMB_OFFSET = 0.3; // 時計の上に乗った時の浮く高さ
+const CLIMB_OFFSET = 0.3; 
 
 type ActionState = 'walk1' | 'walk2' | 'walk3' | 'idleForWatch';
 
@@ -30,13 +32,12 @@ type ActionState = 'walk1' | 'walk2' | 'walk3' | 'idleForWatch';
 function SceneEnvironment() {
   const { scene: treeScene } = useGLTF('/models/tree.glb');
   
-  // 木にも当たり判定用の名前をつける
   useEffect(() => {
     treeScene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
-        child.userData = { isObstacle: true }; // 障害物タグ
+        child.userData = { isObstacle: true };
       }
     });
   }, [treeScene]);
@@ -54,7 +55,7 @@ function SceneEnvironment() {
 }
 
 // =========================================================
-// 2. Watces (時計) - 地形認識対応
+// 2. Watces (時計)
 // =========================================================
 function Watces({ position }: { position: [number, number, number] }) {
   const { scene } = useGLTF('/models/watces.glb');
@@ -64,7 +65,6 @@ function Watces({ position }: { position: [number, number, number] }) {
       if ((child as THREE.Mesh).isMesh) {
         child.castShadow = true;
         child.receiveShadow = false;
-        // ★重要: レイキャスト（足元の地形判定）のためにタグ付け
         child.userData = { isWalkable: true }; 
         child.name = 'watch_surface';
       }
@@ -81,10 +81,8 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   const group = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF('/models/hedoban.glb');
   
-  // Three.jsのシーン全体を取得（レイキャスト用）
   const { scene: globalScene } = useThree();
 
-  // アニメーションの移動成分削除（その場歩き化）
   const cleanAnimations = useMemo(() => {
     const clonedAnimations = animations.map((clip) => clip.clone());
     const walkClip = clonedAnimations.find((clip) => clip.name === 'walk');
@@ -98,23 +96,18 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
   
   const [bubbleText, setBubbleText] = useState<string | null>(null);
   
-  // 状態管理
   const currentStateStr = useRef<ActionState>('idleForWatch');
   const currentActionAnim = useRef<THREE.AnimationAction | null>(null);
   
-  // 移動管理
   const currentPos = useRef(new THREE.Vector3(...initialPosition));
   const targetPos = useRef<THREE.Vector3 | null>(null);
   
-  // ★スタック（ハマり）検知用
   const lastFramePos = useRef(new THREE.Vector3(...initialPosition));
   const stuckCounter = useRef(0);
 
-  // ★レイキャスト（足元の地形判定）用
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const downVector = useMemo(() => new THREE.Vector3(0, -1, 0), []);
 
-  // 影の設定
   useEffect(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
@@ -132,7 +125,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     currentActionAnim.current = newAction;
   }, [actions]);
 
-  // 目的地決定（障害物から離れた位置を探す）
   const findSafeTarget = useCallback((): THREE.Vector3 => {
     let safePos: THREE.Vector3 | null = null;
     let attempts = 0;
@@ -141,19 +133,16 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       const r = Math.random() * ACTION_RADIUS;
       const theta = Math.random() * Math.PI * 2;
       const candidate = new THREE.Vector3(Math.cos(theta) * r, 0, Math.sin(theta) * r);
-      // 固定障害物との距離チェック
       const isSafe = OBSTACLES.every(obstacle => candidate.distanceTo(obstacle) > SAFE_DISTANCE);
       if (isSafe) safePos = candidate;
     }
     return safePos || currentPos.current.clone();
   }, []);
 
-  // 次の行動を決定
   const decideNextAction = useCallback(() => {
     let nextState: ActionState;
     let attempts = 0;
     
-    // ★修正1: 同じ行動を繰り返さないロジック
     do {
       const rand = Math.random();
       if (rand < 0.25) nextState = 'idleForWatch';
@@ -161,10 +150,10 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       else if (rand < 0.75) nextState = 'walk2';
       else nextState = 'walk3';
       attempts++;
-    } while (nextState === currentStateStr.current && attempts < 5); // 前回と同じならやり直し
+    } while (nextState === currentStateStr.current && attempts < 5);
 
     currentStateStr.current = nextState;
-    stuckCounter.current = 0; // スタックカウンターリセット
+    stuckCounter.current = 0;
 
     if (nextState === 'idleForWatch') {
       targetPos.current = null;
@@ -174,11 +163,9 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     } else {
       targetPos.current = findSafeTarget();
       fadeToAction('walk');
-      // 向き調整
       if (group.current && targetPos.current) {
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
-      // セリフ
       switch (nextState) {
         case 'walk1': setBubbleText("いいお天気"); break;
         case 'walk2': setBubbleText("お散歩しよっと"); break;
@@ -187,7 +174,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
   }, [fadeToAction, findSafeTarget]);
 
-  // 初期化
   useEffect(() => {
     if (group.current) group.current.position.set(...initialPosition);
     if (actions['idle']) {
@@ -198,24 +184,19 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -------------------------------------------------------------
-  // 毎フレームの物理・AI計算
-  // -------------------------------------------------------------
   useFrame(() => {
     if (!group.current) return;
 
-    // --- 1. 移動処理 ---
+    // --- 移動処理 ---
     if (targetPos.current) {
-      // ベクトル計算
       const direction = targetPos.current.clone().sub(currentPos.current);
       const distance = direction.length();
 
-      // ★修正2: スタック検知（移動中なのに座標が変わっていない場合）
+      // スタック検知
       const movedDistance = currentPos.current.distanceTo(lastFramePos.current);
       if (movedDistance < 0.001) {
         stuckCounter.current++;
-        if (stuckCounter.current > 60) { // 約1秒間ハマり続けたら
-          // 強制的に目的地を変更して脱出
+        if (stuckCounter.current > 60) {
           targetPos.current = null;
           decideNextAction();
           return;
@@ -226,64 +207,47 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       lastFramePos.current.copy(currentPos.current);
 
       if (distance > MOVE_SPEED) {
-        // ★修正4: 衝突回避（Repulsion Force）
-        // 障害物に近づきすぎたら反発力を加えて避ける
+        // 衝突回避
         const repulsion = new THREE.Vector3(0, 0, 0);
         OBSTACLES.forEach(obstacle => {
           const distToObstacle = currentPos.current.distanceTo(obstacle);
           if (distToObstacle < SAFE_DISTANCE) {
-            // 障害物から自分へのベクトル
             const push = currentPos.current.clone().sub(obstacle).normalize();
-            // 近いほど強く押す
             const force = (SAFE_DISTANCE - distToObstacle) * 0.05; 
             repulsion.add(push.multiplyScalar(force));
           }
         });
 
-        // 本来の進行方向 + 反発力
         direction.normalize().multiplyScalar(MOVE_SPEED);
-        direction.add(repulsion); // 合成
-        
-        // Y軸の移動は無視（地形判定に任せる）
+        direction.add(repulsion);
         direction.y = 0;
 
         currentPos.current.add(direction);
         
-        // 進行方向を向く（反発力で向きが変わるため毎フレーム更新）
         const lookAtTarget = currentPos.current.clone().add(direction);
         group.current.lookAt(lookAtTarget.x, group.current.position.y, lookAtTarget.z);
 
       } else {
-        // 到着
         currentPos.current.copy(targetPos.current);
         targetPos.current = null;
         decideNextAction();
       }
     }
 
-    // --- 3. 地形判定（Raycast）で高さを合わせる ---
-    // 足元少し上から下に向けてレイを撃つ
+    // --- 地形判定（Raycast） ---
     const rayOrigin = currentPos.current.clone();
     rayOrigin.y += 1.0; 
     raycaster.set(rayOrigin, downVector);
 
-    // シーン内の「isWalkable」なオブジェクトと交差判定
-    // filterを使って時計のメッシュだけを対象にする
     const intersects = raycaster.intersectObjects(globalScene.children, true);
-    
-    // 時計（watch_surface）に当たったか探す
     const hitWatch = intersects.find(hit => hit.object.userData.isWalkable);
 
-    let targetY = 0; // 地面
+    let targetY = 0;
     if (hitWatch) {
-      // 時計の上なら、その表面の高さ + オフセット
       targetY = hitWatch.point.y + CLIMB_OFFSET;
     }
 
-    // 高さをスムーズに補間（階段を登るように）
     currentPos.current.y = THREE.MathUtils.lerp(currentPos.current.y, targetY, 0.2);
-
-    // 最終的な座標を適用
     group.current.position.copy(currentPos.current);
   });
 
@@ -311,7 +275,7 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
 }
 
 // =========================================================
-// 他キャラクター (変更なし)
+// 他キャラクター
 // =========================================================
 function Mint({ position }: { position: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
