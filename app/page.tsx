@@ -15,12 +15,11 @@ const OBSTACLES = [
   new THREE.Vector3(0, 0, 2.5),    // Red
   new THREE.Vector3(1.0, 0, 0),    // Yellow
   new THREE.Vector3(4.0, 0, 2.0),  // Kuro
+  new THREE.Vector3(0, 0, -2.5),   // Neco (障害物として追加)
 ];
 
 const SAFE_DISTANCE = 1.2;
-// ★修正: 移動速度を速くする (0.008 -> 0.015)
-const MOVE_SPEED = 0.02; 
-
+const MOVE_SPEED = 0.015; 
 const ACTION_RADIUS = 5.0;
 const CLIMB_OFFSET = 0.3; 
 
@@ -75,7 +74,7 @@ function Watces({ position }: { position: [number, number, number] }) {
 }
 
 // =========================================================
-// 3. Hedoban (AIフル装備)
+// 3. Hedoban (AI搭載)
 // =========================================================
 function Hedoban({ initialPosition }: { initialPosition: [number, number, number] }) {
   const group = useRef<THREE.Group>(null);
@@ -167,9 +166,9 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
       switch (nextState) {
-        case 'walk1': setBubbleText("いいお天気ね"); break;
+        case 'walk1': setBubbleText("いいお天気"); break;
         case 'walk2': setBubbleText("お散歩しよっと"); break;
-        case 'walk3': setBubbleText("いいことあるかも"); break;
+        case 'walk3': setBubbleText("いいことありそう"); break;
       }
     }
   }, [fadeToAction, findSafeTarget]);
@@ -182,17 +181,15 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
     }
     const timer = setTimeout(decideNextAction, 1000);
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
   useFrame(() => {
     if (!group.current) return;
 
-    // --- 移動処理 ---
     if (targetPos.current) {
       const direction = targetPos.current.clone().sub(currentPos.current);
       const distance = direction.length();
 
-      // スタック検知
       const movedDistance = currentPos.current.distanceTo(lastFramePos.current);
       if (movedDistance < 0.001) {
         stuckCounter.current++;
@@ -207,7 +204,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       lastFramePos.current.copy(currentPos.current);
 
       if (distance > MOVE_SPEED) {
-        // 衝突回避
         const repulsion = new THREE.Vector3(0, 0, 0);
         OBSTACLES.forEach(obstacle => {
           const distToObstacle = currentPos.current.distanceTo(obstacle);
@@ -234,7 +230,6 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
       }
     }
 
-    // --- 地形判定（Raycast） ---
     const rayOrigin = currentPos.current.clone();
     rayOrigin.y += 1.0; 
     raycaster.set(rayOrigin, downVector);
@@ -266,6 +261,65 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
               position: 'absolute', bottom: '-6px', left: '50%', transform: 'translateX(-50%)',
               width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
               borderTop: '6px solid white'
+            }} />
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+// =========================================================
+// ★新規追加: Neco (にゃあと鳴く)
+// =========================================================
+function Neco({ position }: { position: [number, number, number] }) {
+  const group = useRef<THREE.Group>(null);
+  const { scene, animations } = useGLTF('/models/neco.glb');
+  const { actions } = useAnimations(animations, group);
+  const [showBubble, setShowBubble] = useState(false);
+
+  useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    // 8〜15秒のランダム間隔で「にゃあ」
+    let timeoutId: NodeJS.Timeout;
+    const scheduleMeow = () => {
+      const randomInterval = Math.random() * 7000 + 8000; // 8000ms(8秒) + 0~7000ms(0~7秒) = 8~15秒
+      
+      timeoutId = setTimeout(() => {
+        setShowBubble(true);
+        // 3秒後に消す
+        setTimeout(() => setShowBubble(false), 3000);
+        
+        // 次のスケジュール
+        scheduleMeow();
+      }, randomInterval);
+    };
+
+    scheduleMeow();
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  return (
+    <group ref={group} position={position}>
+      <primitive object={scene} scale={1.8} />
+      {showBubble && (
+        <Html position={[0, 1.0, 0]} center>
+          <div style={{
+            background: 'white', padding: '6px 10px', borderRadius: '12px', color: '#333',
+            whiteSpace: 'nowrap', fontSize: '12px', fontFamily: 'sans-serif', fontWeight: 'bold',
+            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)', position: 'relative', border: '1px solid #ddd'
+          }}>
+            にゃあ
+            <div style={{
+              position: 'absolute', bottom: '-5px', left: '50%', transform: 'translateX(-50%)',
+              width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+              borderTop: '5px solid white'
             }} />
           </div>
         </Html>
@@ -480,6 +534,9 @@ export default function Home() {
           <Kuro position={[4.0, 0, 2.0]} />
 
           <Hedoban initialPosition={[hedobanInitPos.x, hedobanInitPos.y, hedobanInitPos.z]} />
+
+          {/* ★Necoを追加: [0, 0, -2.5] */}
+          <Neco position={[0, 0, -2.5]} />
 
           <FloatingCloud1 />
           <FloatingCloud2 />
