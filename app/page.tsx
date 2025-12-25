@@ -167,9 +167,9 @@ function Hedoban({ initialPosition }: { initialPosition: [number, number, number
         group.current.lookAt(targetPos.current.x, group.current.position.y, targetPos.current.z);
       }
       switch (nextState) {
-        case 'walk1': setBubbleText("いいお天気"); break;
+        case 'walk1': setBubbleText("いいお天気ね"); break;
         case 'walk2': setBubbleText("お散歩しよっと"); break;
-        case 'walk3': setBubbleText("いいことありそう"); break;
+        case 'walk3': setBubbleText("いいことあるかも"); break;
       }
     }
   }, [fadeToAction, findSafeTarget]);
